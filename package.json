@@ -1,0 +1,11 @@
+{
+  "name": "magic-voice-scriber-firefox",
+  "version": "1.0.0",
+  "description": "Smart semantic voice dictation inspired by Google Rambler for Mozilla Firefox (Gemini, OpenAI/Mistral/Groq, Local Ollama/Whisper).",
+  "author": "MTF Karukera",
+  "license": "MPL-2.0",
+  "scripts": {
+    "test": "node --test test/mvs.test.js",
+    "build": "bash build.sh"
+  }
+}
