@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title data-i18n="popupTitle">Magic Voice Scriber</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="mvs-popup-container">
+    <!-- ── EN-TÊTE DU MINI-POPUP ── -->
+    <header class="mvs-popup-header">
+      <div class="mvs-brand-row">
+        <img src="../icon.png" alt="Magic Voice Scriber" class="mvs-popup-logo" width="28" height="28">
+        <div class="mvs-brand-meta">
+          <h1 class="mvs-popup-title" data-i18n="extName">Magic Voice Scriber</h1>
+          <span class="mvs-popup-version">v1.0.0</span>
+        </div>
+      </div>
+      <button type="button" id="btn-quick-dictate" class="mvs-btn-quick-dictate" title="Démarrer la dictée dans l'onglet actif" data-i18n-title="popupStartDictation">
+        <span class="mvs-quick-dictate-icon" aria-hidden="true">🎙️</span>
+        <span data-i18n="popupStartDictation">Dicter</span>
+      </button>
+    </header>
+
+    <!-- ── CARTE 1 : ACTIVATION SUR CE SITE ── -->
+    <section class="mvs-popup-card">
+      <div class="mvs-card-row">
+        <div class="mvs-card-info">
+          <span class="mvs-card-label" data-i18n="popupToggleSiteLabel">Activer sur ce site</span>
+          <span id="popup-domain-name" class="mvs-card-subtext">domaine.com</span>
+        </div>
+        <label class="mvs-switch" aria-label="Activer ou désactiver Magic Voice Scriber sur ce site">
+          <input type="checkbox" id="switch-site-enabled" checked>
+          <span class="mvs-slider"></span>
+        </label>
+      </div>
+    </section>
+
+    <!-- ── CARTE 2 : GOUTTE VOCALE AU REPOS ── -->
+    <section class="mvs-popup-card">
+      <div class="mvs-card-row">
+        <div class="mvs-card-info">
+          <span class="mvs-card-label" data-i18n="popupCaretGemLabel">Goutte Vocale au curseur</span>
+          <span class="mvs-card-subtext" data-i18n="popupCaretGemDesc">Afficher la bulle orange près du curseur au repos</span>
+        </div>
+        <label class="mvs-switch" aria-label="Afficher la Goutte Vocale au repos sous le curseur">
+          <input type="checkbox" id="switch-caret-gem">
+          <span class="mvs-slider"></span>
+        </label>
+      </div>
+    </section>
+
+    <!-- ── CARTE 3 : SÉLECTEUR DE RACCOURCI CLAVIER ── -->
+    <section class="mvs-popup-card">
+      <div class="mvs-card-info mb-sm">
+        <span class="mvs-card-label" data-i18n="popupShortcutLabel">Raccourci de déclenchement</span>
+      </div>
+      <div class="mvs-segmented-control" role="group" aria-label="Choix du raccourci clavier">
+        <button type="button" class="mvs-segment-btn active" id="btn-shortcut-s" data-shortcut="KeyS">
+          <kbd id="label-shortcut-s">Alt + Shift + S</kbd>
+        </button>
+        <button type="button" class="mvs-segment-btn" id="btn-shortcut-d" data-shortcut="KeyD">
+          <kbd id="label-shortcut-d">Alt + Shift + D</kbd>
+        </button>
+      </div>
+    </section>
+
+    <!-- ── CARTE 4 : ACCÈS DIRECTS (ASSISTANT & OPTIONS) ── -->
+    <footer class="mvs-popup-footer">
+      <button type="button" id="btn-open-setup" class="mvs-footer-link-btn">
+        <span aria-hidden="true">🚀</span>
+        <span data-i18n="popupOpenSetup">Assistant</span>
+      </button>
+      <span class="mvs-footer-separator" aria-hidden="true">•</span>
+      <button type="button" id="btn-open-options" class="mvs-footer-link-btn">
+        <span aria-hidden="true">⚙️</span>
+        <span data-i18n="popupOpenOptions">Options</span>
+      </button>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -2,15 +2,17 @@
  * Magic Voice Scriber — Script d'Arrière-Plan (Event Page Manifest V3)
  * ════════════════════════════════════════════════════════════════════
  *
- * Point d'entrée privilégié 100 % WebExtension Pure (compatible ATN & Thunderbird Release 153+).
+ * Point d'entrée privilégié 100 % WebExtension Pure pour Mozilla Firefox 128+ ESR.
  *
  * Responsabilités :
- *   1. Enregistrer automatiquement compose-injected.js (bouton flottant permanent près du curseur)
- *   2. Gérer le bouton de barre d'outils (compose_action), le menu contextuel et le raccourci Mac/PC
+ *   1. Router les messages entre les pages de contenu, le mini-popup et les pages d'options/setup
+ *   2. Gérer le raccourci clavier global (commands) et l'injection dynamique du widget web universel
  *   3. Capturer le microphone en contexte d'extension (moz-extension://), réveiller l'AudioContext
  *      et calculer en temps réel l'amplitude des 5 barres d'ondes vocales (RMS + FFT)
  *   4. Piloter le streaming WebSocket temps réel (gemini-3.5-transcribe-live v1beta) avec affichage
  *      des mots au fil de la voix, ainsi que les appels REST (Gemini, OpenAI/Mistral/Groq, Local)
+ *   5. Conserver en mémoire le dernier enregistrement pour réessai sans reparler en cas d'erreur
+ *   6. Sécuriser les appels de test de connexion (anti-SSRF) et isoler les clés d'API
  *
  * Auteur : MTF Karukera
  */
@@ -52,7 +54,12 @@ const CONFIG_DEFAUT = {
   // 4. Préférences du Sélecteur de Mode de Voix (pour OpenAI/Tiers et Local)
   voiceModePolicy: "remember", // "remember" | "default"
   defaultVoiceMode: "natural", // "natural" | "pro" | "bullets"
-  lastVoiceMode: "natural"     // "natural" | "pro" | "bullets"
+  lastVoiceMode: "natural",    // "natural" | "pro" | "bullets"
+
+  // 5. Ergonomie Web Universelle (Firefox MV3)
+  caretGemEnabled: false,      // Furtive par défaut : la Goutte vocale n'apparaît que sur raccourci
+  sitesExclus: [],             // Domaines sur lesquels la capsule est désactivée
+  shortcutKey: "KeyS"          // "KeyS" (Alt+Shift+S) ou "KeyD" (Alt+Shift+D)
 };
 
 const MODES_VOIX_VALIDES = new Set(["natural", "pro", "bullets"]);
@@ -69,7 +76,8 @@ const CODES_ERREURS_CONNUS = new Set([
   "NETWORK",
   "SERVICE_UNAVAILABLE",
   "INVALID_PAYLOAD",
-  "PERMISSION_REQUIRED"
+  "PERMISSION_REQUIRED",
+  "BUSY"
 ]);
 
 /**
@@ -103,7 +111,7 @@ function determinerModeVoixActif(config) {
 
 /**
  * Envoie l'action "toggleVoicePill" à l'onglet web actif, avec injection
- * dynamique si le script n'est pas encore présent dans la page.
+ * dynamique si le content script n'est pas encore présent dans la page.
  * @param {number} tabId - Identifiant de l'onglet actif
  */
 async function envoyerToggleVoicePill(tabId) {
@@ -114,7 +122,7 @@ async function envoyerToggleVoicePill(tabId) {
     try {
       await api.scripting.executeScript({
         target: { tabId },
-        files: ["content/compose-injected.js"]
+        files: ["content/content-injected.js"]
       });
       await new Promise((resolve) => setTimeout(resolve, 80));
       await api.tabs.sendMessage(tabId, { action: "toggleVoicePill" });
@@ -124,7 +132,7 @@ async function envoyerToggleVoicePill(tabId) {
   }
 }
 
-// ── Clic sur le bouton de l'extension dans la barre d'outils Firefox ────────
+// ── Clic sur le bouton de l'extension dans la barre d'outils (fallback sans popup) ──
 if (api && api.action && api.action.onClicked) {
   api.action.onClicked.addListener((tab) => {
     if (tab && tab.id) {
@@ -154,7 +162,7 @@ if (api && api.commands && api.commands.onCommand) {
 if (api && api.menus) {
   api.menus.remove("open-options-action").catch(() => {});
 
-  let titreMenu = "Magic Voice Scriber";
+  let titreMenu = "Magic Voice Scriber — Options";
   try {
     if (api.i18n && api.i18n.getMessage) {
       titreMenu = api.i18n.getMessage("menuOptionsTitle") || titreMenu;
@@ -176,19 +184,52 @@ if (api && api.menus) {
   });
 }
 
+// ── Libération de la session si l'onglet actif est fermé ────────────────────
+if (api && api.tabs && api.tabs.onRemoved) {
+  api.tabs.onRemoved.addListener((tabId) => {
+    if (sessionAudio.active && sessionAudio.tabId === tabId) {
+      if (DEBUG) console.log("[MagicVoiceScriber] Onglet fermé, libération de la session :", tabId);
+      libererSessionAudio();
+    }
+  });
+}
+
+// ── Ouverture automatique du Wizard d'onboarding au premier démarrage ───────
+if (api && api.runtime && api.runtime.onInstalled) {
+  api.runtime.onInstalled.addListener(async (details) => {
+    if (details && details.reason === "install") {
+      try {
+        const urlSetup = api.runtime.getURL("setup/setup.html");
+        await api.tabs.create({ url: urlSetup });
+      } catch (err) {
+        if (DEBUG) console.warn("[MagicVoiceScriber] Note onInstalled setup tab :", err);
+      }
+    }
+  });
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // 3. MOTEUR DE CAPTURE AUDIO, ONDES VOCALES & STREAMING GEMINI LIVE
 // ═══════════════════════════════════════════════════════════════════════════
 
+let demarrageSessionEnCours = false;
+
+let sessionSauvegardeAudio = {
+  dernierBlob: null,
+  dernierMimeType: "audio/webm",
+  dernierVoiceMode: "natural"
+};
+
 let sessionAudio = {
   active: false,
-  etat: "IDLE", // "IDLE" | "RECORDING" | "PAUSED"
+  etat: "IDLE", // "IDLE" | "RECORDING" | "PAUSED" | "STOPPING"
   tabId: null,
   fluxMedia: null,
   mediaRecorder: null,
   tranchesAudio: [],
   mimeType: "audio/webm",
   contexteAudio: null,
+  noeudSource: null,
   analyseur: null,
   donneesFreq: null,
   donneesTemps: null,
@@ -353,7 +394,7 @@ function assemblerSegmentsLive(base, ajout) {
 }
 
 /**
- * Diffuse en temps réel la transcription en cours vers l'éditeur de rédaction.
+ * Diffuse en temps réel la transcription en cours vers le widget web actif.
  */
 function diffuserTexteLiveVersEditeur() {
   if (!sessionAudio.tabId) return;
@@ -382,6 +423,7 @@ function libererSessionAudio() {
 
   if (sessionAudio.processeurPcm) {
     try {
+      sessionAudio.processeurPcm.onaudioprocess = null;
       sessionAudio.processeurPcm.disconnect();
     } catch {
       /* Ignorer */
@@ -398,6 +440,15 @@ function libererSessionAudio() {
     sessionAudio.gainMuet = null;
   }
 
+  if (sessionAudio.noeudSource) {
+    try {
+      sessionAudio.noeudSource.disconnect();
+    } catch {
+      /* Ignorer */
+    }
+    sessionAudio.noeudSource = null;
+  }
+
   if (sessionAudio.socketLive) {
     try {
       sessionAudio.socketLive.close();
@@ -412,7 +463,7 @@ function libererSessionAudio() {
 
   if (typeof sessionAudio.resolveurFinLive === "function") {
     try {
-      sessionAudio.resolveurFinLive();
+      sessionAudio.resolveurFinLive(true);
     } catch {
       /* Ignorer */
     }
@@ -430,158 +481,166 @@ function libererSessionAudio() {
     sessionAudio.fluxMedia = null;
   }
 
+  if (sessionAudio.mediaRecorder) {
+    try {
+      if (sessionAudio.mediaRecorder.state !== "inactive") {
+        sessionAudio.mediaRecorder.stop();
+      }
+    } catch {
+      /* Ignorer */
+    }
+    sessionAudio.mediaRecorder = null;
+  }
+
   if (sessionAudio.contexteAudio && sessionAudio.contexteAudio.state !== "closed") {
     sessionAudio.contexteAudio.close().catch(() => {});
     sessionAudio.contexteAudio = null;
   }
 
+  // Purge intégrale de la mémoire vive audio et des textes
+  sessionAudio.tranchesAudio = [];
+  sessionAudio.texteValideLive = "";
+  sessionAudio.texteInterimLive = "";
+  sessionAudio.dernierTexteInterimValide = "";
+  sessionAudio.tabId = null;
   sessionAudio.analyseur = null;
   sessionAudio.donneesFreq = null;
   sessionAudio.donneesTemps = null;
-  sessionAudio.mediaRecorder = null;
   sessionAudio.active = false;
   sessionAudio.etat = "IDLE";
 }
 
 /**
- * Démarre une nouvelle session d'enregistrement microphone pour l'onglet de rédaction.
+ * Démarre une nouvelle session d'enregistrement microphone pour l'onglet web actif.
  * @param {number} tabId
  * @returns {Promise<Object>}
  */
 async function demarrerSessionAudio(tabId) {
-  libererSessionAudio();
-
-  const config = await chargerConfiguration();
-  if (!globalThis.MVSProviders.estConfigure(config)) {
-    return {
-      success: false,
-      error: "NOT_CONFIGURED",
-      activeVoiceMode: determinerModeVoixActif(config),
-      provider: config.provider
-    };
+  if (demarrageSessionEnCours) {
+    return { success: false, error: "BUSY" };
   }
+  demarrageSessionEnCours = true;
 
-  // Détection en 1,8 s du bug Thunderbird #2080573 (getUserMedia restant pending si media.navigator.permission.disabled = false)
-  let flux;
-  let idTimeoutMic = null;
   try {
-    const promesseMic = navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true
-      }
-    });
+    libererSessionAudio();
 
-    const promesseDelai = new Promise((_, reject) => {
-      idTimeoutMic = setTimeout(() => {
-        reject(new Error("MIC_PREF_REQUIRED"));
-      }, 1800);
-    });
-
-    flux = await Promise.race([promesseMic, promesseDelai]);
-    if (idTimeoutMic) clearTimeout(idTimeoutMic);
-  } catch (err) {
-    if (idTimeoutMic) clearTimeout(idTimeoutMic);
-    if (DEBUG) console.error("[MagicVoiceScriber] Erreur getUserMedia :", err);
-    if (err && err.message === "MIC_PREF_REQUIRED") {
+    const config = await chargerConfiguration();
+    if (!globalThis.MVSProviders.estConfigure(config)) {
       return {
         success: false,
-        error: "MIC_PREF_REQUIRED",
+        error: "NOT_CONFIGURED",
+        activeVoiceMode: determinerModeVoixActif(config),
         provider: config.provider
       };
     }
+
+    // Capture microphone native Firefox (Gecko audio-capture)
+    let flux;
+    try {
+      flux = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      });
+    } catch (err) {
+      if (DEBUG) console.error("[MagicVoiceScriber] Erreur getUserMedia Firefox :", err);
+      return {
+        success: false,
+        error: "MIC_DENIED",
+        provider: config.provider
+      };
+    }
+
+    sessionAudio.fluxMedia = flux;
+    sessionAudio.tabId = tabId;
+    sessionAudio.tranchesAudio = [];
+    sessionAudio.texteValideLive = "";
+    sessionAudio.texteInterimLive = "";
+    sessionAudio.dernierTexteInterimValide = "";
+    sessionAudio.resolveurFinLive = null;
+    sessionAudio.wsPret = false;
+    sessionAudio.activiteDemarree = false;
+    sessionAudio.tamponPcmAvantPret = [];
+
+    // Initialisation et réveil explicite de l'AudioContext pour les 5 barres d'ondes blanches
+    try {
+      const AudioCtx = globalThis.AudioContext || globalThis.webkitAudioContext;
+      if (AudioCtx) {
+        sessionAudio.contexteAudio = new AudioCtx();
+        if (sessionAudio.contexteAudio.state === "suspended") {
+          await sessionAudio.contexteAudio.resume();
+        }
+
+        const source = sessionAudio.contexteAudio.createMediaStreamSource(flux);
+        sessionAudio.noeudSource = source;
+        sessionAudio.analyseur = sessionAudio.contexteAudio.createAnalyser();
+        sessionAudio.analyseur.fftSize = 128;
+        sessionAudio.analyseur.smoothingTimeConstant = 0.65;
+        source.connect(sessionAudio.analyseur);
+        sessionAudio.donneesFreq = new Uint8Array(sessionAudio.analyseur.frequencyBinCount);
+        sessionAudio.donneesTemps = new Uint8Array(sessionAudio.analyseur.fftSize);
+
+        // Si le moteur est Gemini avec gemini-3.5-transcribe-live, ouvrir le flux WebSocket v1beta
+        const estGeminiLive =
+          config.provider === "gemini" &&
+          config.geminiModel === "gemini-3.5-transcribe-live" &&
+          Boolean(config.geminiApiKey && config.geminiApiKey.trim());
+
+        if (estGeminiLive) {
+          initialiserWebSocketLive(config, source);
+        }
+      }
+    } catch (err) {
+      if (DEBUG) console.warn("[MagicVoiceScriber] Analyseur audio non disponible :", err);
+    }
+
+    // Démarrage du MediaRecorder (utilisé pour les modes batch et comme filet de sécurité)
+    const mime = choisirMimeTypeSupporte();
+    sessionAudio.mimeType = mime || "audio/webm";
+    try {
+      sessionAudio.mediaRecorder = mime
+        ? new MediaRecorder(flux, { mimeType: mime })
+        : new MediaRecorder(flux);
+    } catch {
+      sessionAudio.mediaRecorder = new MediaRecorder(flux);
+    }
+
+    sessionAudio.mediaRecorder.addEventListener("dataavailable", (e) => {
+      if (e.data && e.data.size > 0) {
+        sessionAudio.tranchesAudio.push(e.data);
+      }
+    });
+
+    sessionAudio.mediaRecorder.start(200);
+    sessionAudio.active = true;
+    sessionAudio.etat = "RECORDING";
+
+    // Envoi périodique (50 ms = 20 FPS) des 5 hauteurs de barres au widget web actif
+    if (tabId) {
+      sessionAudio.intervalleOndes = setInterval(() => {
+        if (!sessionAudio.active || sessionAudio.etat !== "RECORDING") return;
+        const bars = calculerCinqBarresVocales();
+        api.tabs
+          .sendMessage(tabId, {
+            action: "updateVoiceBars",
+            bars
+          })
+          .catch(() => {});
+      }, 50);
+    }
+
     return {
-      success: false,
-      error: "MIC_DENIED",
-      provider: config.provider
+      success: true,
+      state: "RECORDING",
+      activeVoiceMode: determinerModeVoixActif(config),
+      provider: config.provider,
+      geminiModel: config.geminiModel
     };
+  } finally {
+    demarrageSessionEnCours = false;
   }
-
-  sessionAudio.fluxMedia = flux;
-  sessionAudio.tabId = tabId;
-  sessionAudio.tranchesAudio = [];
-  sessionAudio.texteValideLive = "";
-  sessionAudio.texteInterimLive = "";
-  sessionAudio.dernierTexteInterimValide = "";
-  sessionAudio.resolveurFinLive = null;
-  sessionAudio.wsPret = false;
-  sessionAudio.activiteDemarree = false;
-  sessionAudio.tamponPcmAvantPret = [];
-
-  // Initialisation et réveil explicite de l'AudioContext pour les 5 barres d'ondes blanches
-  try {
-    const AudioCtx = globalThis.AudioContext || globalThis.webkitAudioContext;
-    if (AudioCtx) {
-      sessionAudio.contexteAudio = new AudioCtx();
-      if (sessionAudio.contexteAudio.state === "suspended") {
-        await sessionAudio.contexteAudio.resume();
-      }
-
-      const source = sessionAudio.contexteAudio.createMediaStreamSource(flux);
-      sessionAudio.analyseur = sessionAudio.contexteAudio.createAnalyser();
-      sessionAudio.analyseur.fftSize = 128;
-      sessionAudio.analyseur.smoothingTimeConstant = 0.65;
-      source.connect(sessionAudio.analyseur);
-      sessionAudio.donneesFreq = new Uint8Array(sessionAudio.analyseur.frequencyBinCount);
-      sessionAudio.donneesTemps = new Uint8Array(sessionAudio.analyseur.fftSize);
-
-      // Si le moteur est Gemini avec gemini-3.5-transcribe-live, ouvrir le flux WebSocket v1beta
-      const estGeminiLive =
-        config.provider === "gemini" &&
-        config.geminiModel === "gemini-3.5-transcribe-live" &&
-        Boolean(config.geminiApiKey && config.geminiApiKey.trim());
-
-      if (estGeminiLive) {
-        initialiserWebSocketLive(config, source);
-      }
-    }
-  } catch (err) {
-    if (DEBUG) console.warn("[MagicVoiceScriber] Analyseur audio non disponible :", err);
-  }
-
-  // Démarrage du MediaRecorder (utilisé pour les modes batch et comme filet de sécurité)
-  const mime = choisirMimeTypeSupporte();
-  sessionAudio.mimeType = mime || "audio/webm";
-  try {
-    sessionAudio.mediaRecorder = mime
-      ? new MediaRecorder(flux, { mimeType: mime })
-      : new MediaRecorder(flux);
-  } catch {
-    sessionAudio.mediaRecorder = new MediaRecorder(flux);
-  }
-
-  sessionAudio.mediaRecorder.addEventListener("dataavailable", (e) => {
-    if (e.data && e.data.size > 0) {
-      sessionAudio.tranchesAudio.push(e.data);
-    }
-  });
-
-  sessionAudio.mediaRecorder.start(200);
-  sessionAudio.active = true;
-  sessionAudio.etat = "RECORDING";
-
-  // Envoi périodique (50 ms = 20 FPS) des 5 hauteurs de barres au bouton flottant
-  if (tabId) {
-    sessionAudio.intervalleOndes = setInterval(() => {
-      if (!sessionAudio.active || sessionAudio.etat !== "RECORDING") return;
-      const bars = calculerCinqBarresVocales();
-      api.tabs
-        .sendMessage(tabId, {
-          action: "updateVoiceBars",
-          bars
-        })
-        .catch(() => {});
-    }, 50);
-  }
-
-  return {
-    success: true,
-    state: "RECORDING",
-    activeVoiceMode: determinerModeVoixActif(config),
-    provider: config.provider,
-    geminiModel: config.geminiModel
-  };
 }
 
 /**
@@ -600,7 +659,6 @@ function initialiserWebSocketLive(config, sourceNode) {
     ws.addEventListener("open", () => {
       if (ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify(setupMsg));
-        // Note : On ne débloque plus arbitrairement après 180 ms ; wsPret attend la confirmation setupComplete du serveur.
       }
     });
 
@@ -763,7 +821,7 @@ function initialiserWebSocketLive(config, sourceNode) {
         if (!Array.isArray(sessionAudio.tamponPcmAvantPret)) {
           sessionAudio.tamponPcmAvantPret = [];
         }
-        // Limiter la taille du tampon à ~5 secondes de dictée (environ 150 trames de 4096 échantillons)
+        // Limiter la taille du tampon à ~5 secondes de dictée
         if (sessionAudio.tamponPcmAvantPret.length < 150) {
           sessionAudio.tamponPcmAvantPret.push(payloadAudio);
         }
@@ -782,7 +840,6 @@ function initialiserWebSocketLive(config, sourceNode) {
         sessionAudio.activiteDemarree = true;
       }
 
-      // Contrat officiel Gemini 3.5 Transcribe Live : realtimeInput.audio
       sessionAudio.socketLive.send(payloadAudio);
     };
   } catch (err) {
@@ -806,17 +863,29 @@ async function arreterEtTranscrireSession(modeVoixDemande, texteSecoursClient = 
   if (sessionAudio.socketLive && sessionAudio.socketLive.readyState === WebSocket.OPEN) {
     try {
       await new Promise((resolve) => {
-        sessionAudio.resolveurFinLive = resolve;
-        const timerSecurite = setTimeout(() => {
-          if (sessionAudio.resolveurFinLive === resolve) {
-            sessionAudio.resolveurFinLive = null;
-          }
+        let timerSecurite = null;
+        let timerSilence = null;
+
+        const nettoyerEtResoudre = () => {
+          if (timerSecurite) clearTimeout(timerSecurite);
+          if (timerSilence) clearTimeout(timerSilence);
+          sessionAudio.resolveurFinLive = null;
           resolve();
-        }, 4000); // 4 000 ms pour laisser le temps au modèle d'émettre le segment final SMART
+        };
+
+        sessionAudio.resolveurFinLive = () => {
+          if (!timerSilence) {
+            timerSilence = setTimeout(nettoyerEtResoudre, 800);
+          }
+        };
+
+        // Délai de sécurité global maximal de 5 secondes
+        timerSecurite = setTimeout(() => {
+          nettoyerEtResoudre();
+        }, 5000);
 
         try {
           // Mode Manual VAD (Push-to-Talk) : clôture explicite du tour par activityEnd
-          // Règle Bidi Gemini API : audioStreamEnd est STRICTEMENT INTERDIT lorsque automaticActivityDetection.disabled = true.
           sessionAudio.socketLive.send(
             JSON.stringify({
               realtimeInput: {
@@ -825,9 +894,7 @@ async function arreterEtTranscrireSession(modeVoixDemande, texteSecoursClient = 
             })
           );
         } catch {
-          clearTimeout(timerSecurite);
-          sessionAudio.resolveurFinLive = null;
-          resolve();
+          nettoyerEtResoudre();
         }
       });
     } catch {
@@ -851,7 +918,7 @@ async function arreterEtTranscrireSession(modeVoixDemande, texteSecoursClient = 
       { once: true }
     );
     try {
-      // Sous Gecko/Thunderbird, forcer le flush du buffer interne vers dataavailable avant le stop
+      // Sous Gecko, forcer le flush du buffer interne vers dataavailable avant le stop
       if (typeof recorder.requestData === "function" && recorder.state === "recording") {
         recorder.requestData();
       }
@@ -861,8 +928,12 @@ async function arreterEtTranscrireSession(modeVoixDemande, texteSecoursClient = 
     }
   });
 
+  // Sauvegarde de sécurité du blob audio complet en mémoire en cas d'erreur API
+  sessionSauvegardeAudio.dernierBlob = blobFinal;
+  sessionSauvegardeAudio.dernierMimeType = blobFinal.type || mime;
+  sessionSauvegardeAudio.dernierVoiceMode = modeVoixDemande;
+
   // Priorité au segment validé et nettoyé par SMART.
-  // L'interim brut n'est utilisé en secours que si aucun segment validé n'a été produit.
   let texteLiveFinal = (sessionAudio.texteValideLive || "").trim();
   if (!texteLiveFinal) {
     const texteInterimSecours =
@@ -936,7 +1007,7 @@ async function arreterEtTranscrireSession(modeVoixDemande, texteSecoursClient = 
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 4. GESTIONNAIRE DE MESSAGES INTERNES (Widget Flottant Compose & Options)
+// 4. GESTIONNAIRE DE MESSAGES INTERNES (Widget Flottant, Popup & Options)
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
@@ -951,13 +1022,33 @@ async function traiterMessage(message, expediteur) {
   }
 
   // Validation stricte de l'expéditeur : seuls nos propres scripts internes sont autorisés
-  if (!expediteur || expediteur.id !== api.runtime.id) {
+  if (!expediteur || (api.runtime.id && expediteur.id !== api.runtime.id)) {
     return { success: false, error: "UNAUTHORIZED" };
   }
 
   const tabIdExpediteur = expediteur.tab && expediteur.tab.id ? expediteur.tab.id : null;
 
-  // ── Action 1 : Récupérer l'état et la configuration pour la capsule ────────
+  // Contrôle de session multi-onglets : empêcher une autre page d'interférer avec une dictée en cours
+  if (
+    sessionAudio.active &&
+    sessionAudio.tabId !== null &&
+    tabIdExpediteur !== null &&
+    sessionAudio.tabId !== tabIdExpediteur
+  ) {
+    if (message.action === "startAudioSession") {
+      return { success: false, error: "BUSY" };
+    }
+    if (
+      message.action === "pauseResumeAudioSession" ||
+      message.action === "stopAndTranscribeSession" ||
+      message.action === "cancelAudioSession" ||
+      message.action === "keepAliveAudioSession"
+    ) {
+      return { success: false, error: "UNAUTHORIZED" };
+    }
+  }
+
+  // ── Action 1 : Récupérer l'état et la configuration pour la capsule et le popup ──
   if (message.action === "getConfig") {
     const config = await chargerConfiguration();
     const fournisseur = globalThis.MVSProviders.obtenirFournisseur(config.provider, config);
@@ -984,11 +1075,14 @@ async function traiterMessage(message, expediteur) {
       hasPermission: Boolean(hasPermission),
       requiredOrigin,
       activeVoiceMode,
-      voiceModePolicy: config.voiceModePolicy
+      voiceModePolicy: config.voiceModePolicy,
+      caretGemEnabled: Boolean(config.caretGemEnabled),
+      sitesExclus: Array.isArray(config.sitesExclus) ? config.sitesExclus : [],
+      shortcutKey: config.shortcutKey || "KeyS"
     };
   }
 
-  // ── Action 2 : Sauvegarder le changement de mode de voix (Bouton Morphing) ─
+  // ── Action 2 : Sauvegarder le changement de mode de voix ──────────────────
   if (message.action === "saveVoiceMode") {
     const mode = message.voiceMode;
     if (!MODES_VOIX_VALIDES.has(mode)) {
@@ -1004,7 +1098,16 @@ async function traiterMessage(message, expediteur) {
 
   // ── Action 3 : Démarrer la capture audio en arrière-plan ───────────────────
   if (message.action === "startAudioSession") {
-    return await demarrerSessionAudio(tabIdExpediteur);
+    let idCible = tabIdExpediteur;
+    if (!idCible) {
+      try {
+        const onglets = await api.tabs.query({ active: true, currentWindow: true });
+        if (onglets && onglets[0] && onglets[0].id) {
+          idCible = onglets[0].id;
+        }
+      } catch {}
+    }
+    return await demarrerSessionAudio(idCible);
   }
 
   // ── Action 3bis : Maintien de l'Event Page MV3 en vie pendant la dictée ─────
@@ -1048,6 +1151,45 @@ async function traiterMessage(message, expediteur) {
     return { success: true };
   }
 
+  // ── Action 6bis : Réessayer la transcription avec le dernier audio sauvegardé ──
+  if (message.action === "retryLastTranscription") {
+    if (!sessionSauvegardeAudio.dernierBlob) {
+      return { success: false, error: "NO_AUDIO" };
+    }
+    const config = await chargerConfiguration();
+    const voiceMode = MODES_VOIX_VALIDES.has(message.voiceMode)
+      ? message.voiceMode
+      : sessionSauvegardeAudio.dernierVoiceMode || determinerModeVoixActif(config);
+
+    let audioBase64;
+    try {
+      audioBase64 = await blobVersBase64(sessionSauvegardeAudio.dernierBlob);
+    } catch {
+      return { success: false, error: "EMPTY_RECORDING" };
+    }
+
+    try {
+      const res = await globalThis.MVSProviders.transcrire(
+        config,
+        audioBase64,
+        sessionSauvegardeAudio.dernierMimeType || "audio/webm",
+        voiceMode
+      );
+      return {
+        success: true,
+        text: res.text,
+        provider: config.provider,
+        wasLiveStreamed: false
+      };
+    } catch (err) {
+      const code = err && err.message ? err.message : "SERVICE_UNAVAILABLE";
+      return {
+        success: false,
+        error: CODES_ERREURS_CONNUS.has(code) ? code : "SERVICE_UNAVAILABLE"
+      };
+    }
+  }
+
   // ── Action 7 : Transcrire un payload Base64 direct (rétro-compatibilité) ───
   if (message.action === "transcribeAudio") {
     if (typeof message.audioBase64 !== "string" || !message.audioBase64.trim()) {
@@ -1081,19 +1223,125 @@ async function traiterMessage(message, expediteur) {
     }
   }
 
-  // ── Action 8 : Tester la connexion à un fournisseur depuis les options ─────
+  // ── Action 8 : Tester la connexion à un fournisseur depuis options ou wizard ──
   if (message.action === "testProvider") {
+    // Protection anti-SSRF : s'assurer que l'appel provient de nos pages internes de configuration
+    const urlOptions = (api && api.runtime && typeof api.runtime.getURL === "function") ? api.runtime.getURL("options/") : "";
+    const urlSetup = (api && api.runtime && typeof api.runtime.getURL === "function") ? api.runtime.getURL("setup/") : "";
+    const urlPopup = (api && api.runtime && typeof api.runtime.getURL === "function") ? api.runtime.getURL("popup/") : "";
+    const expediteurValide = expediteur && (!api.runtime.id || expediteur.id === api.runtime.id) && expediteur.url &&
+      ((urlOptions && expediteur.url.startsWith(urlOptions)) ||
+       (urlSetup && expediteur.url.startsWith(urlSetup)) ||
+       (urlPopup && expediteur.url.startsWith(urlPopup)));
+
+    if (!expediteurValide) {
+      return { success: false, error: "UNAUTHORIZED", message: "UNAUTHORIZED" };
+    }
     if (!message.config || typeof message.config !== "object") {
-      return { success: false, message: "INVALID_PAYLOAD" };
+      return { success: false, error: "INVALID_PAYLOAD", message: "INVALID_PAYLOAD" };
     }
     return await globalThis.MVSProviders.testerConnexion(message.config);
   }
 
-  // ── Action 9 : Ouvrir la page des paramètres ───────────────────────────────
+  // ── Action 9 : Basculer l'affichage de la pilule vocale dans l'onglet actif ─
+  if (message.action === "toggleVoicePill") {
+    try {
+      const onglets = await api.tabs.query({ active: true, currentWindow: true });
+      if (onglets && onglets[0] && onglets[0].id) {
+        await envoyerToggleVoicePill(onglets[0].id);
+        return { success: true };
+      }
+      return { success: false, error: "NO_ACTIVE_TAB" };
+    } catch {
+      return { success: false, error: "SERVICE_UNAVAILABLE" };
+    }
+  }
+
+  // ── Action 10 : Mettre à jour les réglages ergonomiques Web ────────────────
+  if (message.action === "updateWebConfig") {
+    const modifications = {};
+    if (typeof message.caretGemEnabled === "boolean") {
+      modifications.caretGemEnabled = message.caretGemEnabled;
+    }
+    if (Array.isArray(message.sitesExclus)) {
+      modifications.sitesExclus = message.sitesExclus;
+    }
+    if (message.shortcutKey === "KeyS" || message.shortcutKey === "KeyD") {
+      modifications.shortcutKey = message.shortcutKey;
+      if (api.commands && typeof api.commands.update === "function") {
+        const nouveauRaccourci = message.shortcutKey === "KeyD" ? "Alt+Shift+D" : "Alt+Shift+S";
+        api.commands.update({
+          name: "toggle-voice-dictation",
+          shortcut: nouveauRaccourci
+        }).catch(() => {});
+      }
+    }
+    try {
+      await api.storage.local.set(modifications);
+      return { success: true, ...modifications };
+    } catch {
+      return { success: false, error: "SERVICE_UNAVAILABLE" };
+    }
+  }
+
+  // ── Action 11 : Basculer l'exclusion du domaine actuel ──────────────────────
+  if (message.action === "toggleDomainExclusion") {
+    const domain = (message.domain || "").trim().toLowerCase();
+    if (!domain) {
+      return { success: false, error: "INVALID_PAYLOAD" };
+    }
+    try {
+      const config = await chargerConfiguration();
+      const setExclus = new Set(config.sitesExclus || []);
+
+      let doitExclure;
+      if (typeof message.enabled === "boolean") {
+        doitExclure = !message.enabled;
+      } else if (typeof message.isExcluded === "boolean") {
+        doitExclure = message.isExcluded;
+      } else {
+        const estActuellementExclu = Array.from(setExclus).some(
+          (ex) => domain === ex || domain.endsWith("." + ex)
+        );
+        doitExclure = !estActuellementExclu;
+      }
+
+      if (doitExclure) {
+        setExclus.add(domain);
+      } else {
+        setExclus.delete(domain);
+        // Supprimer aussi tout domaine parent ou sous-domaine correspondant
+        for (const ex of setExclus) {
+          if (domain === ex || domain.endsWith("." + ex) || ex.endsWith("." + domain)) {
+            setExclus.delete(ex);
+          }
+        }
+      }
+      const nouveauxExclus = Array.from(setExclus);
+      await api.storage.local.set({ sitesExclus: nouveauxExclus });
+      return { success: true, sitesExclus: nouveauxExclus, isExcluded: doitExclure };
+    } catch {
+      return { success: false, error: "SERVICE_UNAVAILABLE" };
+    }
+  }
+
+  // ── Action 12 : Ouvrir la page des paramètres ──────────────────────────────
   if (message.action === "openOptions") {
     libererSessionAudio();
     try {
       await api.runtime.openOptionsPage();
+      return { success: true };
+    } catch {
+      return { success: false, error: "SERVICE_UNAVAILABLE" };
+    }
+  }
+
+  // ── Action 13 : Ouvrir l'assistant de configuration & diagnostic ───────────
+  if (message.action === "openSetup") {
+    libererSessionAudio();
+    try {
+      const urlSetup = api.runtime.getURL("setup/setup.html");
+      await api.tabs.create({ url: urlSetup });
       return { success: true };
     } catch {
       return { success: false, error: "SERVICE_UNAVAILABLE" };

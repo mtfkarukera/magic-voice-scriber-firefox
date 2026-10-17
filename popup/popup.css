@@ -1,0 +1,291 @@
+/**
+ * Magic Voice Scriber — Feuille de Style du Mini-Popup Popover
+ * ═════════════════════════════════════════════════════════════
+ * Charte graphique Magic-Softs : Glassmorphism épuré, contraste WCAG AA,
+ * switches tactiles fluides et intégration native Firefox MV3.
+ * Auteur : MTF Karukera
+ */
+
+:root {
+  --mvs-bg: #0f172a;
+  --mvs-surface: rgba(30, 41, 59, 0.85);
+  --mvs-border: rgba(148, 163, 184, 0.15);
+  --mvs-text: #f8fafc;
+  --mvs-text-muted: #94a3b8;
+  --mvs-primary: #ea580c;
+  --mvs-primary-hover: #f97316;
+  --mvs-primary-subtle: rgba(234, 88, 12, 0.15);
+  --mvs-success: #10b981;
+  --mvs-radius-lg: 14px;
+  --mvs-radius-md: 10px;
+  --mvs-radius-sm: 6px;
+  --mvs-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+  --mvs-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --mvs-bg: #f8fafc;
+    --mvs-surface: rgba(255, 255, 255, 0.92);
+    --mvs-border: rgba(203, 213, 225, 0.8);
+    --mvs-text: #0f172a;
+    --mvs-text-muted: #64748b;
+    --mvs-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+  }
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  width: 320px;
+  min-height: 290px;
+  background-color: var(--mvs-bg);
+  color: var(--mvs-text);
+  font-family: var(--mvs-font);
+  font-size: 13px;
+  line-height: 1.4;
+  overflow-x: hidden;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+.mvs-popup-container {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── En-tête ── */
+.mvs-popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--mvs-border);
+}
+
+.mvs-brand-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mvs-popup-logo {
+  border-radius: var(--mvs-radius-sm);
+  flex-shrink: 0;
+}
+
+.mvs-brand-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.mvs-popup-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--mvs-text);
+  line-height: 1.2;
+}
+
+.mvs-popup-version {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--mvs-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.mvs-btn-quick-dictate {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  background: var(--mvs-primary);
+  color: #ffffff;
+  border: none;
+  border-radius: var(--mvs-radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+.mvs-btn-quick-dictate:hover {
+  background: var(--mvs-primary-hover);
+  transform: translateY(-1px);
+}
+
+.mvs-btn-quick-dictate:active {
+  transform: translateY(0);
+}
+
+/* ── Cartes Réglages ── */
+.mvs-popup-card {
+  background: var(--mvs-surface);
+  border: 1px solid var(--mvs-border);
+  border-radius: var(--mvs-radius-md);
+  padding: 10px 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.mvs-card-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.mvs-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mvs-card-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mvs-text);
+}
+
+.mvs-card-subtext {
+  font-size: 11px;
+  color: var(--mvs-text-muted);
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mb-sm {
+  margin-bottom: 6px;
+}
+
+/* ── Interrupteurs Switches ── */
+.mvs-switch {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.mvs-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.mvs-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(148, 163, 184, 0.35);
+  transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 20px;
+}
+
+.mvs-slider:before {
+  position: absolute;
+  content: "";
+  height: 14px;
+  width: 14px;
+  left: 3px;
+  bottom: 3px;
+  background-color: #ffffff;
+  transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.mvs-switch input:checked + .mvs-slider {
+  background-color: var(--mvs-primary);
+}
+
+.mvs-switch input:checked + .mvs-slider:before {
+  transform: translateX(16px);
+}
+
+.mvs-switch input:focus-visible + .mvs-slider {
+  outline: 2px solid var(--mvs-primary);
+  outline-offset: 2px;
+}
+
+/* ── Contrôle Segmenté Raccourcis ── */
+.mvs-segmented-control {
+  display: flex;
+  background: rgba(148, 163, 184, 0.12);
+  padding: 2px;
+  border-radius: var(--mvs-radius-sm);
+  gap: 2px;
+}
+
+.mvs-segment-btn {
+  flex: 1;
+  padding: 6px 4px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--mvs-text-muted);
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.mvs-segment-btn kbd {
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  display: block;
+}
+
+.mvs-segment-btn.active {
+  background: var(--mvs-primary-subtle);
+  color: var(--mvs-primary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.mvs-segment-btn:hover:not(.active) {
+  color: var(--mvs-text);
+}
+
+/* ── Pied de page ── */
+.mvs-popup-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding-top: 4px;
+}
+
+.mvs-footer-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  color: var(--mvs-text-muted);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: var(--mvs-radius-sm);
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.mvs-footer-link-btn:hover {
+  color: var(--mvs-text);
+  background-color: rgba(148, 163, 184, 0.1);
+}
+
+.mvs-footer-separator {
+  color: var(--mvs-border);
+  font-size: 10px;
+}

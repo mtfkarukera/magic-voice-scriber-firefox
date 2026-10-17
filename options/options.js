@@ -6,8 +6,9 @@
  *   1. Appliquer l'internationalisation native sur tous les nœuds déclaratifs (6 langues)
  *   2. Charger et sauvegarder les préférences dans browser.storage.local
  *   3. Gérer les préréglages Cloud (OpenAI, Groq, Mistral, Custom) et Locaux (Ollama, LM Studio)
- *   4. Vérifier et demander en 1 clic les permissions d'hôtes WebExtension
- *   5. Tester en direct la connexion au moteur sélectionné
+ *   4. Gérer l'ergonomie web (Goutte vocale au repos, liste noire de domaines)
+ *   5. Vérifier et demander en 1 clic les permissions d'hôtes WebExtension
+ *   6. Tester en direct la connexion au moteur sélectionné et relancer le wizard
  *
  * Auteur : MTF Karukera
  */
@@ -68,6 +69,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // ── Références DOM ─────────────────────────────────────────────────────────
   const form = document.getElementById("form-options");
+  const btnOpenSetup = document.getElementById("btn-open-setup");
   const selectProvider = document.getElementById("select-provider");
   const providerBadge = document.getElementById("provider-badge");
   const helpProvider = document.getElementById("help-provider");
@@ -105,6 +107,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   const selectVoiceModePolicy = document.getElementById("voice-mode-policy");
   const selectDefaultVoiceMode = document.getElementById("default-voice-mode");
 
+  // Section 3 : Ergonomie Web & Exclusions
+  const switchCaretGem = document.getElementById("caret-gem-enabled");
+  const inputNewDomain = document.getElementById("input-new-domain");
+  const btnAddDomain = document.getElementById("btn-add-domain");
+  const sitesExclusContainer = document.getElementById("sites-exclus-container");
+  const sitesExclusEmpty = document.getElementById("sites-exclus-empty");
+
   // Bannière Permission & Statut
   const permissionBanner = document.getElementById("permission-warning-banner");
   const permissionDomainCode = document.getElementById("permission-domain-code");
@@ -134,7 +143,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     localApiKey: "",
     voiceModePolicy: "remember",
     defaultVoiceMode: "natural",
-    lastVoiceMode: "natural"
+    lastVoiceMode: "natural",
+    caretGemEnabled: false,
+    sitesExclus: []
   };
 
   const PRESETS_CLOUD = {
@@ -168,6 +179,96 @@ document.addEventListener("DOMContentLoaded", async () => {
       llmModel: "local-model"
     }
   };
+
+  // Liste locale des domaines exclus
+  let listeSitesExclus = [];
+
+  /**
+   * Met à jour le rendu visuel de la liste des domaines exclus (Zéro innerHTML).
+   */
+  function rendreSitesExclus() {
+    if (!sitesExclusContainer) return;
+    sitesExclusContainer.replaceChildren();
+
+    if (listeSitesExclus.length === 0) {
+      if (sitesExclusEmpty) sitesExclusEmpty.classList.remove("mvs-hidden");
+      return;
+    }
+
+    if (sitesExclusEmpty) sitesExclusEmpty.classList.add("mvs-hidden");
+
+    listeSitesExclus.forEach((domaine, index) => {
+      const badge = document.createElement("span");
+      badge.className = "mvs-tag-badge";
+
+      const nomSpan = document.createElement("span");
+      nomSpan.textContent = domaine;
+      badge.appendChild(nomSpan);
+
+      const btnSuppr = document.createElement("button");
+      btnSuppr.type = "button";
+      btnSuppr.className = "mvs-btn-remove-tag";
+      btnSuppr.setAttribute("aria-label", `Supprimer ${domaine}`);
+      btnSuppr.textContent = "✕";
+      btnSuppr.addEventListener("click", () => {
+        listeSitesExclus.splice(index, 1);
+        rendreSitesExclus();
+      });
+
+      badge.appendChild(btnSuppr);
+      sitesExclusContainer.appendChild(badge);
+    });
+  }
+
+  /**
+   * Ajoute un nom de domaine à la liste des sites exclus après assainissement.
+   */
+  function ajouterDomaineExclu() {
+    if (!inputNewDomain) return;
+    let brut = inputNewDomain.value.trim().toLowerCase();
+    if (!brut) return;
+
+    // Assainissement (retrait http/https et slash)
+    brut = brut.replace(/^https?:\/\//, "").replace(/\/.*$/, "").trim();
+
+    if (!brut || !brut.includes(".")) {
+      afficherStatut("error", t("domainInvalid") || "Nom de domaine invalide");
+      return;
+    }
+
+    if (listeSitesExclus.includes(brut)) {
+      afficherStatut("error", t("domainAlreadyExcluded") || "Ce domaine est déjà exclu");
+      return;
+    }
+
+    listeSitesExclus.push(brut);
+    inputNewDomain.value = "";
+    rendreSitesExclus();
+  }
+
+  if (btnAddDomain) {
+    btnAddDomain.addEventListener("click", ajouterDomaineExclu);
+  }
+  if (inputNewDomain) {
+    inputNewDomain.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        ajouterDomaineExclu();
+      }
+    });
+  }
+
+  // ── Relance de l'Assistant de Configuration ──────────────────────────────
+  if (btnOpenSetup) {
+    btnOpenSetup.addEventListener("click", async () => {
+      try {
+        const urlSetup = api.runtime.getURL("setup/setup.html");
+        await api.tabs.create({ url: urlSetup });
+      } catch (err) {
+        if (DEBUG) console.error("[MagicVoiceScriber] Erreur ouverture setup :", err);
+      }
+    });
+  }
 
   /**
    * Affiche un message dans la bannière de statut.
@@ -209,7 +310,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       localLlmModel: inputLocalLlmModel.value.trim() || "llama3.2",
       localApiKey: inputLocalKey.value.trim(),
       voiceModePolicy: selectVoiceModePolicy.value,
-      defaultVoiceMode: selectDefaultVoiceMode.value
+      defaultVoiceMode: selectDefaultVoiceMode.value,
+      caretGemEnabled: Boolean(switchCaretGem && switchCaretGem.checked),
+      sitesExclus: [...listeSitesExclus]
     };
   }
 
@@ -309,6 +412,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     selectVoiceModePolicy.value = cfg.voiceModePolicy;
     selectDefaultVoiceMode.value = cfg.defaultVoiceMode;
+
+    if (switchCaretGem) {
+      switchCaretGem.checked = Boolean(cfg.caretGemEnabled);
+    }
+    listeSitesExclus = Array.isArray(cfg.sitesExclus) ? [...cfg.sitesExclus] : [];
+    rendreSitesExclus();
   } catch (err) {
     if (DEBUG) console.warn("[MagicVoiceScriber] Erreur lecture options :", err);
   }
@@ -411,7 +520,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     try {
-      // Si l'utilisateur force le mode par défaut à l'ouverture, on aligne aussi lastVoiceMode
       const donneesASauvegarder = { ...config };
       if (config.voiceModePolicy === "default") {
         donneesASauvegarder.lastVoiceMode = config.defaultVoiceMode;

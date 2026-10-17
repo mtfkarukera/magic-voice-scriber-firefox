@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title data-i18n="setupPageTitle">Magic Voice Scriber — Assistant de Configuration & Diagnostic</title>
+  <link rel="stylesheet" href="setup.css">
+</head>
+<body>
+  <div class="mvs-setup-container">
+    <!-- ── EN-TÊTE DU WIZARD ── -->
+    <header class="mvs-setup-header">
+      <div class="mvs-header-brand">
+        <img src="../icon.png" alt="Magic Voice Scriber" class="mvs-setup-logo" width="48" height="48">
+        <div>
+          <h1 data-i18n="setupHeaderTitle">Assistant de Configuration & Diagnostic</h1>
+          <p class="mvs-setup-subtitle" data-i18n="setupHeaderSubtitle">Préparez votre dictée vocale sémantique dans Mozilla Firefox en quelques étapes simples.</p>
+        </div>
+      </div>
+
+      <!-- ── INDICATEUR D'ÉTAPES (STEPPER 5 ÉTAPES) ── -->
+      <nav class="mvs-stepper" aria-label="Progression de la configuration">
+        <button type="button" class="mvs-step-indicator active" data-step="1" id="step-btn-1">
+          <span class="mvs-step-num">1</span>
+          <span class="mvs-step-label" data-i18n="step1Label">Micro & OS</span>
+        </button>
+        <span class="mvs-step-line" aria-hidden="true"></span>
+        <button type="button" class="mvs-step-indicator" data-step="2" id="step-btn-2">
+          <span class="mvs-step-num">2</span>
+          <span class="mvs-step-label" data-i18n="step2Label">Moteur d'IA</span>
+        </button>
+        <span class="mvs-step-line" aria-hidden="true"></span>
+        <button type="button" class="mvs-step-indicator" data-step="3" id="step-btn-3">
+          <span class="mvs-step-num">3</span>
+          <span class="mvs-step-label" data-i18n="step3Label">Style & Raccourcis</span>
+        </button>
+        <span class="mvs-step-line" aria-hidden="true"></span>
+        <button type="button" class="mvs-step-indicator" data-step="4" id="step-btn-4">
+          <span class="mvs-step-num">4</span>
+          <span class="mvs-step-label" data-i18n="step4Label">Essayer la Magie</span>
+        </button>
+        <span class="mvs-step-line" aria-hidden="true"></span>
+        <button type="button" class="mvs-step-indicator" data-step="5" id="step-btn-5">
+          <span class="mvs-step-num">5</span>
+          <span class="mvs-step-label" data-i18n="step5Label">Prêt !</span>
+        </button>
+      </nav>
+    </header>
+
+    <!-- ── CONTENU DES ÉTAPES DU WIZARD ── -->
+    <main class="mvs-setup-main">
+      <!-- ══════════════════════════════════════════════════════════════════ -->
+      <!-- ÉTAPE 1 : MICROPHONE & DIAGNOSTIC SYSTÈME                          -->
+      <!-- ══════════════════════════════════════════════════════════════════ -->
+      <section id="step-panel-1" class="mvs-step-panel active" role="region" aria-labelledby="step-btn-1">
+        <div class="mvs-panel-intro">
+          <h2 data-i18n="step1Title">1. Diagnostic du Microphone et Compatibilité Système</h2>
+          <p class="mvs-panel-desc" data-i18n="step1Desc">Vérifiez que Firefox a bien l'autorisation d'accéder à votre matériel microphone avant de commencer.</p>
+        </div>
+
+        <div class="mvs-card">
+          <!-- Détection de l'OS -->
+          <div class="mvs-system-info">
+            <span class="mvs-os-icon" id="os-icon" aria-hidden="true">💻</span>
+            <div class="mvs-os-details">
+              <strong id="os-name-label" data-i18n="osDetecting">Détection du système…</strong>
+              <span id="os-detail-text" class="mvs-text-muted"></span>
+            </div>
+          </div>
+
+          <!-- Zone de Test Microphone en direct -->
+          <div class="mvs-mic-tester">
+            <div class="mvs-mic-visualizer" id="mic-visualizer">
+              <div class="mvs-waveform-bar"></div>
+              <div class="mvs-waveform-bar"></div>
+              <div class="mvs-waveform-bar"></div>
+              <div class="mvs-waveform-bar"></div>
+              <div class="mvs-waveform-bar"></div>
+            </div>
+            <p id="mic-status-text" class="mvs-mic-status" role="status" aria-live="polite" data-i18n="micStatusIdle">Cliquez sur « Tester le microphone » et parlez pour vérifier le signal.</p>
+            <button type="button" id="btn-test-mic" class="mvs-btn mvs-btn-primary">
+              <span class="mvs-btn-icon-symbol" aria-hidden="true">🎙️</span>
+              <span data-i18n="btnTestMic">Tester le microphone</span>
+            </button>
+          </div>
+
+          <!-- Guide d'autorisation Firefox (affiché en cas de besoin) -->
+          <div id="mic-pref-guide" class="mvs-alert mvs-alert-info">
+            <div class="mvs-alert-icon" aria-hidden="true">ℹ️</div>
+            <div class="mvs-alert-body">
+              <strong data-i18n="prefGuideTitle">Autorisation unique requise dans Firefox :</strong>
+              <p data-i18n="prefGuideBody">Lorsque Firefox vous invite à partager votre microphone, cochez l'option <strong>« Se souvenir de cette décision »</strong> puis cliquez sur <strong>« Autoriser »</strong>. Vous n'aurez plus jamais à répéter cette action.</p>
+            </div>
+          </div>
+        </div>
+
+        <footer class="mvs-step-footer">
+          <div></div>
+          <button type="button" class="mvs-btn mvs-btn-primary mvs-btn-next" data-next="2">
+            <span data-i18n="btnNext">Suivant : Moteur d'IA →</span>
+          </button>
+        </footer>
+      </section>
+
+      <!-- ══════════════════════════════════════════════════════════════════ -->
+      <!-- ÉTAPE 2 : MOTEUR D'IA & CLÉ D'API                                  -->
+      <!-- ══════════════════════════════════════════════════════════════════ -->
+      <section id="step-panel-2" class="mvs-step-panel" role="region" aria-labelledby="step-btn-2">
+        <div class="mvs-panel-intro">
+          <h2 data-i18n="step2Title">2. Choix du Moteur d'IA (BYOK)</h2>
+          <p class="mvs-panel-desc" data-i18n="step2Desc">Choisissez votre fournisseur d'intelligence artificielle et saisissez votre clé d'API personnelle sécurisée.</p>
+        </div>
+
+        <div class="mvs-card">
+          <!-- Sélection du Fournisseur -->
+          <div class="mvs-field">
+            <label for="setup-select-provider" data-i18n="labelSelectProvider">Moteur d'intelligence vocale :</label>
+            <select id="setup-select-provider" class="mvs-select">
+              <option value="gemini" data-i18n="providerOptionGemini">Google Gemini (Recommandé — Rapide, gratuit & streaming Live)</option>
+              <option value="openai" data-i18n="providerOptionOpenai">OpenAI &amp; Tiers Cloud (Mistral, Groq, OpenAI)</option>
+              <option value="local" data-i18n="providerOptionLocal">100 % Local &amp; Souverain (Whisper local + Ollama / LM Studio)</option>
+            </select>
+          </div>
+
+          <!-- Panneau 2A : Gemini -->
+          <div id="setup-panel-gemini" class="mvs-provider-box">
+            <div class="mvs-field">
+              <label for="setup-gemini-key" data-i18n="labelGeminiApiKey">Clé API Google Gemini (AI Studio) :</label>
+              <div class="mvs-input-group">
+                <input type="password" id="setup-gemini-key" class="mvs-input" placeholder="AIzaSy..." autocomplete="off">
+                <button type="button" id="btn-toggle-setup-gemini-key" class="mvs-btn-icon" title="Afficher/Masquer" aria-label="Afficher ou masquer la clé API Gemini" aria-pressed="false">👁</button>
+              </div>
+              <p class="mvs-help">
+                <span data-i18n="helpGeminiGet">Obtenez votre clé gratuite en 30 secondes sur </span>
+                <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">Google AI Studio</a>.
+              </p>
+            </div>
+          </div>
+
+          <!-- Panneau 2B : Cloud OpenAI / Mistral / Groq -->
+          <div id="setup-panel-openai" class="mvs-provider-box mvs-hidden">
+            <div class="mvs-field">
+              <label for="setup-openai-preset" data-i18n="labelOpenaiPreset">Service Cloud :</label>
+              <select id="setup-openai-preset" class="mvs-select">
+                <option value="openai">OpenAI (Whisper + GPT-4o-mini)</option>
+                <option value="groq">Groq (Whisper turbo ultra-rapide)</option>
+                <option value="mistral">Mistral AI (Souveraineté européenne)</option>
+                <option value="custom">Autre service compatible OpenAI</option>
+              </select>
+            </div>
+            <div class="mvs-field">
+              <label for="setup-openai-key" data-i18n="labelSttApiKey">Clé API :</label>
+              <div class="mvs-input-group">
+                <input type="password" id="setup-openai-key" class="mvs-input" placeholder="sk-..." autocomplete="off">
+                <button type="button" id="btn-toggle-setup-openai-key" class="mvs-btn-icon" title="Afficher/Masquer" aria-label="Afficher ou masquer la clé API Cloud" aria-pressed="false">👁</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Panneau 2C : Modèle Local -->
+          <div id="setup-panel-local" class="mvs-provider-box mvs-hidden">
+            <div class="mvs-field">
+              <label for="setup-local-preset" data-i18n="labelLocalLlmPreset">Serveur Local :</label>
+              <select id="setup-local-preset" class="mvs-select">
+                <option value="ollama">Ollama (localhost:11434)</option>
+                <option value="lmstudio">LM Studio (localhost:1234)</option>
+                <option value="custom">Personnalisé</option>
+              </select>
+            </div>
+            <p class="mvs-help" data-i18n="helpLocalMode">Assurez-vous que votre serveur Whisper (ex: faster-whisper sur :8000) et votre LLM sont démarrés.</p>
+          </div>
+
+          <!-- Bouton Test Connexion API -->
+          <div class="mvs-api-tester">
+            <button type="button" id="btn-test-api" class="mvs-btn mvs-btn-secondary">
+              <span data-i18n="btnTestConnection">Tester la connexion</span>
+            </button>
+            <span id="api-test-status" class="mvs-api-status" aria-live="polite"></span>
+          </div>
+        </div>
+
+        <footer class="mvs-step-footer">
+          <button type="button" class="mvs-btn mvs-btn-secondary mvs-btn-prev" data-prev="1">
+            <span data-i18n="btnPrev">← Retour</span>
+          </button>
+          <button type="button" class="mvs-btn mvs-btn-primary mvs-btn-next" data-next="3">
+            <span data-i18n="btnNext">Suivant : Style &amp; Raccourcis →</span>
+          </button>
+        </footer>
+      </section>
+
+      <!-- ══════════════════════════════════════════════════════════════════ -->
+      <!-- ÉTAPE 3 : STYLE & RACCOURCIS (100 % CONDITIONNEL)                  -->
+      <!-- ══════════════════════════════════════════════════════════════════ -->
+      <section id="step-panel-3" class="mvs-step-panel" role="region" aria-labelledby="step-btn-3">
+        <div class="mvs-panel-intro">
+          <h2 data-i18n="step3Title">3. Préférences de Dictée &amp; Ergonomie</h2>
+          <p class="mvs-panel-desc" data-i18n="step3Desc">Votre configuration vocale s'adapte automatiquement à votre moteur d'IA.</p>
+        </div>
+
+        <div class="mvs-card">
+          <!-- ── SOUS-SECTION 3A : GEMINI SMART NATIVE (PAR DÉFAUT) ── -->
+          <div id="setup-gemini-smart-panel" class="mvs-smart-box">
+            <div class="mvs-smart-badge">
+              <span class="mvs-badge-icon" aria-hidden="true">✨</span>
+              <strong data-i18n="smartBadgeTitle">Technologie Native Gemini SMART</strong>
+            </div>
+            <p class="mvs-smart-explanation" data-i18n="smartExplanationText">
+              Avec Google Gemini 3.5, votre voix est traitée en une seule passe ultra-rapide. Le modèle SMART élimine automatiquement les hésitations (« euh », « ben »), faux départs et répétitions sans nécessiter de prompt de reformulation artificielle.
+            </p>
+          </div>
+
+          <!-- ── SOUS-SECTION 3B : MODES LLM (UNIQUEMENT OPENAI / LOCAL) ── -->
+          <div id="setup-llm-modes-panel" class="mvs-llm-modes-box mvs-hidden">
+            <h3 class="mvs-llm-modes-title" data-i18n="llmModesTitle">Style de reformulation par votre modèle LLM :</h3>
+            <div class="mvs-modes-selection">
+              <label class="mvs-mode-option selected">
+                <input type="radio" name="setup-voice-mode" value="natural" checked>
+                <div class="mvs-mode-card">
+                  <span class="mvs-mode-icon" aria-hidden="true">🎙️</span>
+                  <strong data-i18n="modeNaturalTitle">Mode Rambler (Fidèle)</strong>
+                  <p data-i18n="modeNaturalDesc">Supprime les hésitations et ponctue tout en conservant vos mots exacts.</p>
+                </div>
+              </label>
+
+              <label class="mvs-mode-option">
+                <input type="radio" name="setup-voice-mode" value="pro">
+                <div class="mvs-mode-card">
+                  <span class="mvs-mode-icon" aria-hidden="true">👔</span>
+                  <strong data-i18n="modeProTitle">Mode Professionnel</strong>
+                  <p data-i18n="modeProDesc">Reformule vos idées dictées avec un ton courtois, soigné et formel.</p>
+                </div>
+              </label>
+
+              <label class="mvs-mode-option">
+                <input type="radio" name="setup-voice-mode" value="bullets">
+                <div class="mvs-mode-card">
+                  <span class="mvs-mode-icon" aria-hidden="true">📋</span>
+                  <strong data-i18n="modeBulletsTitle">Mode Synthèse / Puces</strong>
+                  <p data-i18n="modeBulletsDesc">Transforme vos pensées exprimées à voix haute en liste d'actions ordonnée.</p>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <hr class="mvs-divider">
+
+          <div class="mvs-shortcut-preview">
+            <span class="mvs-shortcut-icon" aria-hidden="true">⌨️</span>
+            <div>
+              <strong data-i18n="shortcutLabel">Raccourci de dictée rapide :</strong>
+              <kbd id="setup-shortcut-badge">Alt + Shift + S</kbd>
+              <span class="mvs-text-muted" data-i18n="shortcutDescWeb">(ou Alt + Shift + D / Goutte Vocale au repos configurable)</span>
+            </div>
+          </div>
+        </div>
+
+        <footer class="mvs-step-footer">
+          <button type="button" class="mvs-btn mvs-btn-secondary mvs-btn-prev" data-prev="2">
+            <span data-i18n="btnPrev">← Retour</span>
+          </button>
+          <button type="button" class="mvs-btn mvs-btn-primary mvs-btn-next" data-next="4">
+            <span data-i18n="btnNext">Suivant : Essayer la Magie →</span>
+          </button>
+        </footer>
+      </section>
+
+      <!-- ══════════════════════════════════════════════════════════════════ -->
+      <!-- ÉTAPE 4 : BAC À SABLE INTERACTIF (ESSAYEZ LA MAGIE EN DIRECT !)    -->
+      <!-- ══════════════════════════════════════════════════════════════════ -->
+      <section id="step-panel-4" class="mvs-step-panel" role="region" aria-labelledby="step-btn-4">
+        <div class="mvs-panel-intro">
+          <h2 data-i18n="step4Title">4. Essayez la Magie en direct ! ✨</h2>
+          <p class="mvs-panel-desc" data-i18n="step4Desc">Faites le test vous-même : lisez cette phrase à voix haute avec ses hésitations pour voir le texte nettoyé en temps réel.</p>
+        </div>
+
+        <div class="mvs-card mvs-demo-container">
+          <!-- Phrase test suggérée -->
+          <div class="mvs-demo-prompt-card">
+            <span class="mvs-demo-prompt-label" data-i18n="demoPromptLabel">💬 Lisez cette phrase à voix haute :</span>
+            <p class="mvs-demo-prompt-text" id="demo-prompt-text" data-i18n="demoPromptText">
+              « Bonjour Marc, euh... peux-tu me faire un retour sur le devis... non pardon, sur le rapport financier d'ici vendredi à 14 heures ? Merci d'avance ! »
+            </p>
+          </div>
+
+          <!-- Zone d'enregistrement démonstration -->
+          <div class="mvs-demo-recorder">
+            <div class="mvs-mic-visualizer" id="demo-visualizer">
+              <div class="mvs-waveform-bar"></div>
+              <div class="mvs-waveform-bar"></div>
+              <div class="mvs-waveform-bar"></div>
+              <div class="mvs-waveform-bar"></div>
+              <div class="mvs-waveform-bar"></div>
+            </div>
+
+            <p id="demo-status-text" class="mvs-mic-status" role="status" aria-live="polite" data-i18n="demoStatusIdle">Cliquez sur « Lire la phrase » et parlez à voix haute.</p>
+
+            <button type="button" id="btn-demo-record" class="mvs-btn mvs-btn-primary">
+              <span class="mvs-btn-icon-symbol" aria-hidden="true">🎙️</span>
+              <span id="btn-demo-label" data-i18n="btnDemoRecord">Lire la phrase à voix haute</span>
+            </button>
+          </div>
+
+          <!-- Zone d'affichage du résultat nettoyé en direct -->
+          <div id="demo-result-box" class="mvs-demo-result-box mvs-hidden">
+            <div class="mvs-demo-result-header">
+              <span class="mvs-badge-icon" aria-hidden="true">✨</span>
+              <strong data-i18n="demoResultTitle">Résultat nettoyé par Magic Voice Scriber :</strong>
+            </div>
+            <div class="mvs-demo-result-content" id="demo-result-content" aria-live="polite"></div>
+            <div class="mvs-demo-badges">
+              <span class="mvs-result-pill" data-i18n="demoBadgeHesitations">Hésitations « euh » gommées ✓</span>
+              <span class="mvs-result-pill" data-i18n="demoBadgeAutocorrect">Auto-correction résolue ✓</span>
+              <span class="mvs-result-pill" data-i18n="demoBadgePunctuation">Ponctuation appliquée ✓</span>
+            </div>
+          </div>
+        </div>
+
+        <footer class="mvs-step-footer">
+          <button type="button" class="mvs-btn mvs-btn-secondary mvs-btn-prev" data-prev="3">
+            <span data-i18n="btnPrev">← Retour</span>
+          </button>
+          <div class="mvs-step-footer-actions">
+            <button type="button" class="mvs-btn-link mvs-btn-next" data-next="5" data-i18n="btnSkipDemo">Passer l'essai →</button>
+            <button type="button" class="mvs-btn mvs-btn-primary mvs-btn-next" data-next="5">
+              <span data-i18n="btnNextReady">Suivant : C'est prêt ! →</span>
+            </button>
+          </div>
+        </footer>
+      </section>
+
+      <!-- ══════════════════════════════════════════════════════════════════ -->
+      <!-- ÉTAPE 5 : RÉCAPITULATIF & PRÊT À DICTER                            -->
+      <!-- ══════════════════════════════════════════════════════════════════ -->
+      <section id="step-panel-5" class="mvs-step-panel" role="region" aria-labelledby="step-btn-5">
+        <div class="mvs-panel-intro">
+          <h2 data-i18n="step5Title">5. Tout est prêt ! 🎉</h2>
+          <p class="mvs-panel-desc" data-i18n="step5Desc">Votre environnement de dictée vocale sémantique est entièrement configuré pour Firefox.</p>
+        </div>
+
+        <div class="mvs-card mvs-ready-card">
+          <div class="mvs-ready-badge" aria-hidden="true">✨</div>
+          <h3 data-i18n="readyHeadingWeb">Comment dicter sur le Web ?</h3>
+          <ol class="mvs-ready-steps">
+            <li>
+              <strong data-i18n="readyStep1TitleWeb">1. Cliquez dans n'importe quel champ de texte</strong>
+              <p data-i18n="readyStep1DescWeb">Placez votre curseur dans un champ ou éditeur (ChatGPT, Claude, Notion, Google Docs, Gmail, Slack, forums, etc.).</p>
+            </li>
+            <li>
+              <strong data-i18n="readyStep2TitleWeb">2. Lancez la prise de parole</strong>
+              <p data-i18n="readyStep2DescWeb">Appuyez sur <kbd>Alt+Shift+S</kbd> (Mac: <kbd>⌥⇧S</kbd>). Parlez librement sans vous soucier des hésitations ni des répétitions.</p>
+            </li>
+            <li>
+              <strong data-i18n="readyStep3TitleWeb">3. Insertion instantanée</strong>
+              <p data-i18n="readyStep3DescWeb">Appuyez sur Entrée ou cliquez sur la pilule sonore : votre texte nettoyé et ponctué s'insère directement au curseur !</p>
+            </li>
+          </ol>
+        </div>
+
+        <footer class="mvs-step-footer">
+          <button type="button" class="mvs-btn mvs-btn-secondary mvs-btn-prev" data-prev="4">
+            <span data-i18n="btnPrev">← Retour</span>
+          </button>
+          <button type="button" id="btn-finish-setup" class="mvs-btn mvs-btn-primary">
+            <span data-i18n="btnFinishSetup">Enregistrer et commencer à dicter ✓</span>
+          </button>
+        </footer>
+      </section>
+    </main>
+  </div>
+
+  <script src="../mvs-providers.js"></script>
+  <script src="setup.js"></script>
+</body>
+</html>

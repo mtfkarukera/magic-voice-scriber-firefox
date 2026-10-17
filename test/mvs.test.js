@@ -11,7 +11,7 @@
 
 "use strict";
 
-const { describe, it } = require("node:test");
+const { describe, it, after } = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -320,6 +320,140 @@ describe("2. MVSProviders — Pipelines Gemini, OpenAI/Mistral & Local (Mock Fet
       globalThis.fetch = fetchOriginal;
     }
   });
+
+  it("garantit l'absence de ?key= dans l'URL Gemini et transmet la clé par en-tête x-goog-api-key", async () => {
+    const fetchOriginal = globalThis.fetch;
+    let urlRequete = "";
+    let headersRequete = null;
+
+    globalThis.fetch = async (url, options) => {
+      urlRequete = url;
+      headersRequete = options && options.headers;
+      return {
+        ok: true,
+        status: 200,
+        async json() {
+          return {
+            candidates: [
+              {
+                content: {
+                  parts: [{ audioTranscription: { text: "Texte test" } }],
+                  role: "model"
+                },
+                finishReason: "STOP",
+                index: 0
+              }
+            ]
+          };
+        }
+      };
+    };
+
+    try {
+      const res = await MVSProviders.transcrire(
+        {
+          provider: "gemini",
+          geminiApiKey: "AIzaSecretKey123",
+          geminiModel: "gemini-3.5-transcribe"
+        },
+        "UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=",
+        "audio/wav",
+        "natural"
+      );
+
+      assert.equal(res.success, true);
+      assert.ok(!urlRequete.includes("?key="), "L'URL ne doit jamais contenir ?key=");
+      assert.equal(headersRequete["x-goog-api-key"], "AIzaSecretKey123");
+    } finally {
+      globalThis.fetch = fetchOriginal;
+    }
+  });
+
+  it("isole strictement les clés STT et LLM en présence d'origines différentes (sécurité cross-domain)", async () => {
+    const fetchOriginal = globalThis.fetch;
+    const authHeaders = [];
+
+    globalThis.fetch = async (url, options) => {
+      authHeaders.push({ url, auth: options && options.headers && options.headers.Authorization });
+      if (url.includes("/audio/transcriptions")) {
+        return {
+          ok: true,
+          status: 200,
+          async json() {
+            return { text: "texte brut" };
+          }
+        };
+      }
+      return {
+        ok: true,
+        status: 200,
+        async json() {
+          return { choices: [{ message: { content: "Texte final." } }] };
+        }
+      };
+    };
+
+    try {
+      await MVSProviders.transcrire(
+        {
+          provider: "openai",
+          sttBaseUrl: "https://stt.example.com",
+          sttApiKey: "key-stt-only",
+          sttModel: "whisper-1",
+          llmBaseUrl: "https://llm.other-domain.com",
+          llmApiKey: "key-llm-only",
+          llmModel: "gpt-4o-mini"
+        },
+        "UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=",
+        "audio/webm",
+        "pro"
+      );
+
+      assert.equal(authHeaders[0].auth, "Bearer key-stt-only");
+      assert.equal(authHeaders[1].auth, "Bearer key-llm-only");
+    } finally {
+      globalThis.fetch = fetchOriginal;
+    }
+  });
+
+  it("valide la méthode testerConnexion pour Gemini, OpenAI et Local", async () => {
+    const fetchOriginal = globalThis.fetch;
+
+    globalThis.fetch = async (url) => {
+      if (url.includes("googleapis.com")) {
+        return { ok: true, status: 200, async json() { return { models: [] }; } };
+      }
+      if (url.includes("openai.com") || url.includes("localhost")) {
+        return {
+          ok: true,
+          status: 200,
+          async json() {
+            return { choices: [{ message: { content: "Bonjour, test de connexion." } }] };
+          }
+        };
+      }
+      return { ok: true, status: 200, async json() { return {}; } };
+    };
+
+    try {
+      const resGemini = await MVSProviders.testerConnexion({
+        provider: "gemini",
+        geminiApiKey: "AIzaTestKey"
+      });
+      assert.equal(resGemini.success, true);
+
+      const resOpenai = await MVSProviders.testerConnexion({
+        provider: "openai",
+        llmApiKey: "sk-test",
+        sttApiKey: "sk-test",
+        llmBaseUrl: "https://api.openai.com",
+        sttBaseUrl: "https://api.openai.com"
+      });
+      assert.equal(resOpenai.success, true);
+    } finally {
+      globalThis.fetch = fetchOriginal;
+    }
+  });
 });
 
 describe("3. Internationalisation (Parité des 6 langues & Zéro texte en dur)", () => {
@@ -349,13 +483,14 @@ describe("3. Internationalisation (Parité des 6 langues & Zéro texte en dur)",
     }
   });
 
-  it("couvre tous les attributs data-i18n* utilisés dans compose.html et options.html", () => {
+  it("couvre tous les attributs data-i18n* utilisés dans options.html, popup.html et setup.html", () => {
     const dicEn = JSON.parse(
       fs.readFileSync(path.join(RACINE, "_locales/en/messages.json"), "utf8")
     );
     const fichiersHtml = [
-      path.join(RACINE, "content/compose.html"),
-      path.join(RACINE, "options/options.html")
+      path.join(RACINE, "options/options.html"),
+      path.join(RACINE, "popup/popup.html"),
+      path.join(RACINE, "setup/setup.html")
     ];
 
     const regexAttr = /data-i18n(?:-[a-z-]+)?="([^"]+)"/g;
@@ -377,8 +512,9 @@ describe("4. Sécurité DOM, CSP & Garde-fou DEBUG (Règles 11, 12, 14)", () => 
   const fichiersJs = [
     "background.js",
     "mvs-providers.js",
-    "content/compose-injected.js",
-    "content/compose.js",
+    "content/content-injected.js",
+    "popup/popup.js",
+    "setup/setup.js",
     "options/options.js"
   ];
 
@@ -414,5 +550,163 @@ describe("4. Sécurité DOM, CSP & Garde-fou DEBUG (Règles 11, 12, 14)", () => 
         `DEBUG = true détecté dans ${rel}`
       );
     }
+  });
+});
+
+describe("5. Injection Universelle, Éligibilité des Champs & Résilience Clavier", () => {
+  // Mock léger d'environnement DOM pour tester content-injected.js
+  const mockDocument = {
+    activeElement: null,
+    location: { hostname: "example.com" },
+    querySelector: () => null,
+    addEventListener: () => {},
+    createElement: (tag) => ({
+      tagName: tag.toUpperCase(),
+      setAttribute: () => {},
+      getAttribute: () => null,
+      appendChild: () => {},
+      classList: { add: () => {}, remove: () => {} },
+      style: {}
+    })
+  };
+
+  class MockHTMLElement {
+    constructor(tagName, attributes = {}) {
+      this.tagName = tagName.toUpperCase();
+      this.attributes = attributes;
+      this.disabled = Boolean(attributes.disabled);
+      this.readOnly = Boolean(attributes.readonly);
+      this.value = attributes.value || "";
+      this.selectionStart = attributes.selectionStart ?? this.value.length;
+      this.selectionEnd = attributes.selectionEnd ?? this.selectionStart;
+      this.isContentEditable = Boolean(attributes.isContentEditable);
+      this.dispatchedEvents = [];
+    }
+
+    getAttribute(nom) {
+      return this.attributes[nom] || null;
+    }
+
+    closest(selecteur) {
+      if (this.attributes.inDisabledFieldset && selecteur === "fieldset:disabled") {
+        return {};
+      }
+      return null;
+    }
+
+    focus() {}
+
+    dispatchEvent(ev) {
+      this.dispatchedEvents.push(ev);
+      return true;
+    }
+  }
+
+  // Configuration de l'environnement global simulé
+  const globalDocOriginal = globalThis.document;
+  const globalWinOriginal = globalThis.window;
+  const globalHTMLInputElementOriginal = globalThis.HTMLInputElement;
+  const globalHTMLTextAreaElementOriginal = globalThis.HTMLTextAreaElement;
+  const globalInputEventOriginal = globalThis.InputEvent;
+  const globalEventOriginal = globalThis.Event;
+
+  globalThis.window = {
+    location: { hostname: "example.com" },
+    addEventListener: () => {},
+    innerWidth: 1024,
+    innerHeight: 768
+  };
+  globalThis.document = mockDocument;
+  globalThis.HTMLElement = MockHTMLElement;
+  globalThis.HTMLInputElement = class extends MockHTMLElement {};
+  globalThis.HTMLTextAreaElement = class extends MockHTMLElement {};
+  globalThis.InputEvent = class {
+    constructor(type, init = {}) {
+      this.type = type;
+      this.data = init.data;
+      this.inputType = init.inputType;
+      this.bubbles = Boolean(init.bubbles);
+    }
+  };
+  globalThis.Event = class {
+    constructor(type, init = {}) {
+      this.type = type;
+      this.bubbles = Boolean(init.bubbles);
+    }
+  };
+
+  const contentModule = require("../content/content-injected.js");
+
+  it("exclut strictement les champs de mot de passe, readonly, disabled et fieldset désactivé", () => {
+    const inputPwd = new globalThis.HTMLInputElement("input", { type: "password" });
+    const inputReadonly = new globalThis.HTMLInputElement("input", { type: "text", readonly: true });
+    const inputDisabled = new globalThis.HTMLInputElement("input", { type: "text", disabled: true });
+    const inputInFieldset = new globalThis.HTMLInputElement("input", { type: "text", inDisabledFieldset: true });
+    const divAriaReadonly = new MockHTMLElement("div", { isContentEditable: true, "aria-readonly": "true" });
+    const contentEditableFalse = new MockHTMLElement("div", { contenteditable: "false" });
+
+    assert.equal(contentModule.estElementEligible(inputPwd), false);
+    assert.equal(contentModule.estElementEligible(inputReadonly), false);
+    assert.equal(contentModule.estElementEligible(inputDisabled), false);
+    assert.equal(contentModule.estElementEligible(inputInFieldset), false);
+    assert.equal(contentModule.estElementEligible(divAriaReadonly), false);
+    assert.equal(contentModule.estElementEligible(contentEditableFalse), false);
+  });
+
+  it("autorise les champs text, search, email, textarea, contenteditable et Google Docs", () => {
+    const inputText = new globalThis.HTMLInputElement("input", { type: "text" });
+    const inputEmail = new globalThis.HTMLInputElement("input", { type: "email" });
+    const inputSearch = new globalThis.HTMLInputElement("input", { type: "search" });
+    const textarea = new globalThis.HTMLTextAreaElement("textarea");
+    const divEditable = new MockHTMLElement("div", { isContentEditable: true });
+
+    assert.equal(contentModule.estElementEligible(inputText), true);
+    assert.equal(contentModule.estElementEligible(inputEmail), true);
+    assert.equal(contentModule.estElementEligible(inputSearch), true);
+    assert.equal(contentModule.estElementEligible(textarea), true);
+    assert.equal(contentModule.estElementEligible(divEditable), true);
+
+    // Google Docs
+    const docOriginal = globalThis.window.location.hostname;
+    globalThis.window.location.hostname = "docs.google.com";
+    assert.equal(contentModule.estElementEligible(new MockHTMLElement("div")), true);
+    globalThis.window.location.hostname = docOriginal;
+  });
+
+  it("gère l'insertion sans erreur sur un champ email où selectionStart jette InvalidStateError", () => {
+    const inputEmail = new globalThis.HTMLInputElement("input", { type: "email", value: "contact@" });
+    // Simuler le comportement standard Gecko : InvalidStateError sur selectionStart pour type email
+    Object.defineProperty(inputEmail, "selectionStart", {
+      get() { throw new Error("InvalidStateError"); },
+      set() { throw new Error("InvalidStateError"); }
+    });
+
+    globalThis.document.activeElement = inputEmail;
+    assert.doesNotThrow(() => {
+      contentModule.insererTexteAuCurseur("example.com");
+    });
+  });
+
+  it("valide la détection d'exclusion des domaines et sous-domaines (sitesExclus)", () => {
+    contentModule.configLocale.sitesExclus = ["interdit.fr", "banque.com"];
+
+    globalThis.window.location.hostname = "interdit.fr";
+    assert.equal(contentModule.estDomaineExclu(), true);
+
+    globalThis.window.location.hostname = "compte.banque.com";
+    assert.equal(contentModule.estDomaineExclu(), true);
+
+    globalThis.window.location.hostname = "autorise.com";
+    assert.equal(contentModule.estDomaineExclu(), false);
+  });
+
+  // Nettoyage de l'environnement global simulé
+  after(() => {
+    globalThis.document = globalDocOriginal;
+    globalThis.window = globalWinOriginal;
+    globalThis.HTMLInputElement = globalHTMLInputElementOriginal;
+    globalThis.HTMLTextAreaElement = globalHTMLTextAreaElementOriginal;
+    globalThis.InputEvent = globalInputEventOriginal;
+    globalThis.Event = globalEventOriginal;
   });
 });

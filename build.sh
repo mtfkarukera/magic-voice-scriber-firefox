@@ -32,6 +32,8 @@ FILES=(
   mvs-providers.js
   content
   options
+  popup
+  setup
   icons
   icon.png
   LICENSE
@@ -39,7 +41,7 @@ FILES=(
 )
 
 # ── 3. Garde-fou Anti-Leak : interdire DEBUG = true en production ───────────
-if grep -nE '(const|let|var)?[[:space:]]*DEBUG[[:space:]]*=[[:space:]]*true' background.js mvs-providers.js options/options.js 2>/dev/null; then
+if grep -nE '(const|let|var)?[[:space:]]*DEBUG[[:space:]]*=[[:space:]]*true' background.js mvs-providers.js options/options.js popup/popup.js setup/setup.js content/content-injected.js 2>/dev/null; then
   echo "❌ ABANDON : DEBUG = true détecté dans le code source. Repasser à false avant de packager." >&2
   exit 1
 fi
