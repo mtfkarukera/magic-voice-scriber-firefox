@@ -28,7 +28,7 @@ Vos préférences (fournisseur actif, mode de voix préféré, URLs, clés d'API
 - **`storage`** : Permet de sauvegarder localement vos préférences et la configuration de vos moteurs d'IA.
 - **`menus`** : Permet d'accéder rapidement aux options via un clic droit sur l'icône de l'extension.
 - **`clipboardWrite`** : Permet de copier d'un clic les exemples et clés lors de la configuration.
-- **Permissions d'hôtes (`host_permissions`)** : Permettent au script d'arrière-plan de contacter directement l'API du moteur IA que vous avez sélectionné (Google Gemini, OpenAI, Groq, Mistral ou `localhost`).
+- **Permissions d'hôtes (`host_permissions`)** : Permettent au script d'arrière-plan de contacter directement l'API du moteur IA que vous avez sélectionné (Google Gemini, Mistral ou `localhost`).
 
 ---
 
@@ -56,4 +56,4 @@ Your preferences (active provider, voice mode preference, endpoints, API keys, e
 - **`storage`**: Used to locally save your preferences and AI provider settings.
 - **`menus`**: Provides quick access to extension settings via right-click on the toolbar icon.
 - **`clipboardWrite`**: Allows convenient one-click copying during setup and testing.
-- **Host Permissions (`host_permissions`)**: Allow the background script to communicate directly with your selected AI provider (Google Gemini, OpenAI, Groq, Mistral, or `localhost`).
+- **Host Permissions (`host_permissions`)**: Allow the background script to communicate directly with your selected AI provider (Google Gemini, Mistral, or `localhost`).

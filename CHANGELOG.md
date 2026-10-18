@@ -5,6 +5,18 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
 
 ---
 
+## [1.2.0] - 2026-10-18
+
+### Épuration des Permissions Réseau & Sécurité Moindre Privilège (Option A)
+- **Suppression des Hôtes Inutilisés (`manifest.json`)** :
+  - Retrait définitif des permissions réseau `https://api.openai.com/*` et `https://api.groq.com/*`.
+  - Alignement strict sur le « Trio Champion » effectivement proposé dans l'interface : Google Gemini API (`generativelanguage.googleapis.com`), Mistral AI (`api.mistral.ai`) et Modèle 100 % Local (`localhost` / `127.0.0.1`).
+  - Élimination des avertissements trompeurs sur la fiche officielle Mozilla Add-ons (AMO) et respect absolu du principe du moindre privilège (*Least Privilege*).
+- **Mise à Jour de la Documentation & Politique de Confidentialité** :
+  - Harmonisation de `PRIVACY_POLICY.md` et de `submission_kit.md` (sections FR et EN) pour refléter exclusivement les hôtes autorisés.
+
+---
+
 ## [1.1.0] - 2026-10-18
 
 ### Perfectionnement Ergonomique, Google Docs & Stratégie Keyboard-First (Phase 8)
