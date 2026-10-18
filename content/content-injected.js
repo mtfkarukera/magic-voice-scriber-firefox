@@ -164,20 +164,21 @@ const DEBUG = false;
   function estElementEligible(el) {
     if (!el || !(el instanceof HTMLElement)) return false;
 
-    // Google Docs (rendu Canvas avec iframe/proxy de saisie)
-    if (window.location.hostname === "docs.google.com") {
-      return true;
-    }
-
-    // Exclusion stricte des éléments désactivés (y compris via fieldset parent) ou en lecture seule
+    // 1. Exclusion stricte des éléments désactivés (y compris via fieldset parent) ou en lecture seule
     if (el.disabled || el.readOnly) return false;
     if (typeof el.closest === "function" && el.closest("fieldset:disabled")) return false;
     if (el.getAttribute("aria-readonly") === "true") return false;
 
+    // 2. Exclusion stricte des inputs sensibles (mots de passe, boutons, etc.)
     if (el.tagName === "INPUT") {
       const type = (el.getAttribute("type") || "text").toLowerCase();
       const typesInterdits = ["password", "hidden", "checkbox", "radio", "button", "submit", "file", "image", "reset"];
       if (typesInterdits.includes(type)) return false;
+      return true;
+    }
+
+    // 3. Google Docs (rendu Canvas avec iframe/proxy de saisie après vérifications de sécurité)
+    if (window.location.hostname === "docs.google.com") {
       return true;
     }
 
@@ -307,6 +308,14 @@ const DEBUG = false;
   function insererTexteAuCurseur(texteAInserer) {
     if (!texteAInserer) return;
     const cible = elementCibleActif || obtenirElementActifProfond() || document.activeElement;
+    if (!cible) return;
+
+    // Protection stricte : vérifier l'éligibilité et la connectivité DOM
+    if (window.location.hostname !== "docs.google.com") {
+      if (!estElementEligible(cible) || (typeof Node !== "undefined" && cible instanceof Node && !cible.isConnected)) {
+        return;
+      }
+    }
 
     // 1. Google Docs (Canvas avec iframe proxy de saisie)
     if (window.location.hostname === "docs.google.com") {
@@ -318,6 +327,7 @@ const DEBUG = false;
           if (cibleProxy) {
             cibleProxy.focus();
             if (docProxy.execCommand && docProxy.execCommand("insertText", false, texteAInserer)) {
+              annoncerA11y(t("statusInserted") || "Texte inséré avec succès");
               return;
             }
           }
@@ -327,6 +337,7 @@ const DEBUG = false;
       // Repli sur l'élément actif du document principal
       try {
         if (document.execCommand("insertText", false, texteAInserer)) {
+          annoncerA11y(t("statusInserted") || "Texte inséré avec succès");
           return;
         }
       } catch {}
@@ -376,6 +387,7 @@ const DEBUG = false;
           if (DEBUG) console.error("[MagicVoiceScriber] Erreur insertion Range :", err);
         }
       }
+      annoncerA11y(t("statusInserted") || "Texte inséré avec succès");
       return;
     }
 
@@ -442,6 +454,7 @@ const DEBUG = false;
         })
       );
       cible.dispatchEvent(new Event("change", { bubbles: true }));
+      annoncerA11y(t("statusInserted") || "Texte inséré avec succès");
     }
   }
 
@@ -498,27 +511,41 @@ const DEBUG = false;
         pointer-events: auto;
       }
 
-      /* ── Goutte Vocale au repos (16px) ── */
+      /* ── Goutte Vocale au repos (28px avec hit-box accessible) ── */
       .mvs-gem {
-        width: 18px;
-        height: 18px;
+        width: 28px;
+        height: 28px;
         border-radius: 50%;
         background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
-        border: 1.5px solid rgba(255, 255, 255, 0.9);
+        border: 2px solid rgba(255, 255, 255, 0.95);
         box-shadow: 0 2px 8px rgba(234, 88, 12, 0.45);
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
+        padding: 0;
         transition: transform 0.15s ease, box-shadow 0.15s ease;
       }
       .mvs-gem:hover {
-        transform: scale(1.15);
+        transform: scale(1.12);
         box-shadow: 0 4px 12px rgba(234, 88, 12, 0.6);
       }
+      .mvs-gem:active,
+      .mvs-wave-btn:active,
+      .mvs-ctrl-btn:active,
+      .mvs-btn-retry:active {
+        transform: scale(0.94);
+      }
+      .mvs-gem:focus-visible,
+      .mvs-wave-btn:focus-visible,
+      .mvs-ctrl-btn:focus-visible,
+      .mvs-btn-retry:focus-visible {
+        outline: 2px solid #ea580c;
+        outline-offset: 2px;
+      }
       .mvs-gem-dot {
-        width: 6px;
-        height: 6px;
+        width: 8px;
+        height: 8px;
         border-radius: 50%;
         background-color: #ffffff;
       }
@@ -557,11 +584,10 @@ const DEBUG = false;
         gap: 1.5px;
         padding: 0 4px;
         box-shadow: 0 2px 6px rgba(220, 38, 38, 0.4);
-        transition: background-color 0.15s ease, transform 0.1s ease;
+        transition: background-color 0.15s ease;
       }
       .mvs-wave-btn:hover {
         background: #ef4444;
-        transform: scale(1.05);
       }
       .mvs-wave-btn.paused {
         background: #f59e0b;
@@ -573,7 +599,7 @@ const DEBUG = false;
         background: #ffffff;
         border-radius: 1px;
         transform-origin: center;
-        transition: transform 0.05s ease;
+        will-change: transform;
       }
 
       /* Chronomètre */
@@ -584,25 +610,6 @@ const DEBUG = false;
         color: #e2e8f0;
         letter-spacing: 0.3px;
         min-width: 34px;
-      }
-
-      /* Bouton de Mode Morphing (Rambler / Pro / Bullets) */
-      .mvs-mode-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 3px;
-        padding: 3px 7px;
-        background: rgba(255, 255, 255, 0.08);
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        border-radius: 12px;
-        color: #f1f5f9;
-        font-size: 11px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: background 0.15s ease, border-color 0.15s ease;
-      }
-      .mvs-mode-btn:hover {
-        background: rgba(255, 255, 255, 0.15);
       }
 
       /* Boutons d'action : Pause, Annuler */
@@ -684,16 +691,20 @@ const DEBUG = false;
     conteneurWidget = document.createElement("div");
     conteneurWidget.className = "mvs-root mvs-interactive mvs-hidden";
 
-    // 1. Goutte Vocale
-    boutonGoutte = document.createElement("div");
+    // 1. Goutte Vocale (Bouton accessible au clavier)
+    boutonGoutte = document.createElement("button");
+    boutonGoutte.type = "button";
     boutonGoutte.className = "mvs-gem mvs-hidden";
+    boutonGoutte.tabIndex = 0;
     const estMacPlateforme = typeof navigator !== "undefined" && (
       (navigator.platform && navigator.platform.toUpperCase().includes("MAC")) ||
       (navigator.userAgent && navigator.userAgent.includes("Mac"))
     );
-    boutonGoutte.title = estMacPlateforme
+    const libelleGoutte = estMacPlateforme
       ? "Démarrer la dictée vocale (⌃ ⇧ S)"
       : "Démarrer la dictée vocale (Alt + Shift + S)";
+    boutonGoutte.title = libelleGoutte;
+    boutonGoutte.setAttribute("aria-label", libelleGoutte);
     const dot = document.createElement("div");
     dot.className = "mvs-gem-dot";
     boutonGoutte.appendChild(dot);
@@ -708,6 +719,7 @@ const DEBUG = false;
     btnOndeRouge.type = "button";
     btnOndeRouge.className = "mvs-wave-btn";
     btnOndeRouge.title = "Arrêter et insérer le texte";
+    btnOndeRouge.setAttribute("aria-label", "Arrêter et insérer le texte");
     barresBlanchesEls = [];
     for (let i = 0; i < 5; i++) {
       const b = document.createElement("div");
@@ -733,6 +745,7 @@ const DEBUG = false;
     btnPause.type = "button";
     btnPause.className = "mvs-ctrl-btn";
     btnPause.title = "Mettre en pause";
+    btnPause.setAttribute("aria-label", "Mettre en pause");
     btnPause.textContent = "⏸";
     vueCapsule.appendChild(btnPause);
 
@@ -741,6 +754,7 @@ const DEBUG = false;
     btnAnnuler.type = "button";
     btnAnnuler.className = "mvs-ctrl-btn";
     btnAnnuler.title = "Annuler la dictée (Échap)";
+    btnAnnuler.setAttribute("aria-label", "Annuler la dictée (Échap)");
     btnAnnuler.textContent = "✕";
     vueCapsule.appendChild(btnAnnuler);
 
@@ -754,6 +768,7 @@ const DEBUG = false;
     btnReessayer.type = "button";
     btnReessayer.className = "mvs-btn-retry";
     btnReessayer.textContent = "Réessayer";
+    btnReessayer.setAttribute("aria-label", "Réessayer la transcription");
     banniereErreur.appendChild(texteErreurEl);
     banniereErreur.appendChild(btnReessayer);
     vueCapsule.appendChild(banniereErreur);
@@ -770,31 +785,31 @@ const DEBUG = false;
     racineShadow.appendChild(conteneurWidget);
     attacherHoteDOM();
 
-    // ── Événements sur les boutons du Shadow DOM ──
-    boutonGoutte.addEventListener("mousedown", (e) => {
-      e.preventDefault();
+    // ── Événements sur les boutons du Shadow DOM (clavier accessible + prévention blur) ──
+    boutonGoutte.addEventListener("mousedown", (e) => e.preventDefault());
+    boutonGoutte.addEventListener("click", () => {
       demarrerDictée();
     });
 
-    btnOndeRouge.addEventListener("mousedown", (e) => {
-      e.preventDefault();
+    btnOndeRouge.addEventListener("mousedown", (e) => e.preventDefault());
+    btnOndeRouge.addEventListener("click", () => {
       if (etatCourant === "RECORDING" || etatCourant === "PAUSED") {
         arreterEtTranscrire();
       }
     });
 
-    btnPause.addEventListener("mousedown", (e) => {
-      e.preventDefault();
+    btnPause.addEventListener("mousedown", (e) => e.preventDefault());
+    btnPause.addEventListener("click", () => {
       basculerPause();
     });
 
-    btnAnnuler.addEventListener("mousedown", (e) => {
-      e.preventDefault();
+    btnAnnuler.addEventListener("mousedown", (e) => e.preventDefault());
+    btnAnnuler.addEventListener("click", () => {
       annulerDictée();
     });
 
-    btnReessayer.addEventListener("mousedown", (e) => {
-      e.preventDefault();
+    btnReessayer.addEventListener("mousedown", (e) => e.preventDefault());
+    btnReessayer.addEventListener("click", () => {
       reessayerTranscription();
     });
 
@@ -915,6 +930,7 @@ const DEBUG = false;
     } else if (nouvelEtat === "ERROR") {
       arreterAnimationOndes();
       arreterChrono();
+      arreterKeepAlive();
       if (banniereErreur) banniereErreur.classList.remove("mvs-hidden");
     }
   }
@@ -1064,7 +1080,7 @@ const DEBUG = false;
   function demarrerKeepAlive() {
     if (idIntervalleKeepAlive) return;
     idIntervalleKeepAlive = setInterval(() => {
-      if (etatCourant === "RECORDING" || etatCourant === "PAUSED") {
+      if (etatCourant === "RECORDING" || etatCourant === "PAUSED" || etatCourant === "THINKING") {
         if (api && api.runtime && typeof api.runtime.sendMessage === "function") {
           api.runtime.sendMessage({ action: "keepAliveAudioSession" }).catch(() => {});
         }
@@ -1341,6 +1357,11 @@ const DEBUG = false;
    * Réinitialise l'affichage après insertion ou annulation.
    */
   function reinitialiserApresAction() {
+    if (elementCibleActif && typeof elementCibleActif.focus === "function") {
+      try {
+        elementCibleActif.focus();
+      } catch {}
+    }
     if (configLocale.caretGemEnabled && elementCibleActif && !estDomaineExclu()) {
       definirEtat("CARET_GEM");
     } else {
@@ -1493,6 +1514,13 @@ const DEBUG = false;
   // Mise à jour de la position sur scroll / redimensionnement
   window.addEventListener("scroll", () => actualiserPositionCSS(), { passive: true });
   window.addEventListener("resize", () => actualiserPositionCSS(), { passive: true });
+
+  // Nettoyage strict des flux audio en cas de fermeture ou navigation d'onglet
+  window.addEventListener("pagehide", () => {
+    if (etatCourant === "RECORDING" || etatCourant === "PAUSED") {
+      libererAudioLocal();
+    }
+  });
 
   // ═══════════════════════════════════════════════════════════════════════════
   // 7. ÉCOUTEURS DE MESSAGES DU SCRIPT D'ARRIÈRE-PLAN & DU STOCKAGE

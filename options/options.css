@@ -13,8 +13,8 @@
   --opt-text-primary: #0f172a;
   --opt-text-secondary: #334155;
   --opt-text-muted: #64748b;
-  --opt-accent: #6d28d9;
-  --opt-accent-hover: #5b21b6;
+  --opt-accent: #ea6512;
+  --opt-accent-hover: #d25309;
   --opt-success-bg: #ecfdf5;
   --opt-success-text: #065f46;
   --opt-error-bg: #fef2f2;
@@ -32,14 +32,19 @@
     --opt-text-primary: #f8fafc;
     --opt-text-secondary: #cbd5e1;
     --opt-text-muted: #94a3b8;
-    --opt-accent: #8b5cf6;
-    --opt-accent-hover: #7c3aed;
+    --opt-accent: #f97316;
+    --opt-accent-hover: #fb923c;
     --opt-success-bg: rgba(16, 185, 129, 0.15);
     --opt-success-text: #6ee7b7;
     --opt-error-bg: rgba(244, 63, 94, 0.15);
     --opt-error-text: #fda4af;
     --opt-warn-bg: rgba(245, 158, 11, 0.15);
     --opt-warn-text: #fde68a;
+  }
+
+  .mvs-btn-primary {
+    color: #0f172a;
+    font-weight: 700;
   }
 }
 
@@ -320,7 +325,7 @@ button:focus-visible {
 }
 
 .mvs-btn-wizard:hover {
-  background: rgba(109, 40, 217, 0.08);
+  background: rgba(234, 101, 18, 0.08);
   transform: translateY(-1px);
 }
 
@@ -340,7 +345,7 @@ button:focus-visible {
 }
 
 .mvs-switch-field:hover {
-  border-color: rgba(109, 40, 217, 0.35);
+  border-color: rgba(249, 115, 22, 0.35);
   background: rgba(255, 255, 255, 0.035);
 }
 
@@ -444,14 +449,25 @@ button:focus-visible {
   border: none;
   color: var(--opt-text-muted);
   cursor: pointer;
-  font-size: 12px;
-  padding: 0 2px;
-  border-radius: 3px;
+  font-size: 14px;
+  min-width: 24px;
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 4px;
   line-height: 1;
-  transition: color 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease;
 }
 
 .mvs-btn-remove-tag:hover {
   color: var(--opt-error-text);
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.mvs-btn-remove-tag:focus-visible {
+  outline: 2px solid var(--opt-accent);
+  outline-offset: 1px;
 }
 

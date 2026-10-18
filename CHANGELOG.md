@@ -5,6 +5,33 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
 
 ---
 
+## [1.3.0] - 2026-10-19
+
+### Audit Technique, Accessibilité WCAG 2.1 AA & Robustesse In-Situ
+- **Accessibilité Clavier Intégrale (WCAG 2.1 AA)** :
+  - **Goutte Vocale In-Situ Accessible** : Transformation de la Goutte Vocale en `<button type="button">` avec `tabindex="0"`, libellé contextuel `aria-label` et déclenchement sur `click` (tout en conservant la prévention de perte de focus sur `mousedown`).
+  - **Rôles Sémantiques & États ARIA** : Ajout de `role="switch"` sur l'ensemble des cases à cocher configurables (`popup`, `options`, `setup`), et gestion synchronisée de l'attribut `aria-pressed` sur les sélecteurs de raccourcis segmentés.
+  - **Restauration & Gestion du Focus** : Restauration automatique du focus au curseur dans l'élément d'édition cible dès l'insertion ou l'annulation de la dictée ; déplacement du focus accessible sur le titre de l'étape active (`h2`) dans l'Assistant de configuration (`setup.js`).
+  - **Ergonomie & Cibles Tactiles (WCAG 2.5.8)** : Agrandissement de la Goutte Vocale à 28x28px avec hit-box accessible, passages des interrupteurs du mini-popup à 42x24px et bouton de suppression de tags à 24x24px minimum.
+  - **Indicateurs `:focus-visible` & Internationalisation** : Anneaux de focus haute visibilité orange (`#ea580c`) et synchronisation automatique de l'attribut `document.documentElement.lang` selon la langue UI du navigateur.
+- **Robustesse du Cycle de Vie Event Page MV3** :
+  - **Signal KeepAlive Continu en État `THINKING`** : Maintien du battement de cœur `keepAliveAudioSession` pendant toute la durée de la transcription et du traitement IA, protégeant contre la mise en sommeil prématurée de l'Event Page sous Firefox MV3.
+  - **Nettoyage Événementiel `pagehide`** : Libération immédiate et systématique des flux micro et instances `AudioContext` en cas de fermeture ou navigation de l'onglet actif.
+  - **Sécurisation de l'Insertion In-Situ** : Re-validation stricte de l'éligibilité et de la connectivité DOM de l'élément cible avant insertion, avec annonce vocale accessible via la zone de statut ARIA `aria-live`.
+  - **Durcissement des Messages Inter-Scripts** : Validation stricte de l'expéditeur interne (`expediteur.id === api.runtime.id`) dans `background.js` sans risque de fail-open.
+  - **Test Réseau Actif du Moteur Local** : Remplacement du mock local par un véritable appel `fetch` (avec timeout de 3s) dans `mvs-providers.js` pour valider si le service Whisper local écoute réellement.
+- **Harmonisation Graphique & Charte Magic-Softs** :
+  - **Purge de la Dérive Chromatique** : Rétablissement de la palette orange officielle Magic-Softs (`--opt-accent: #ea6512;` / `#f97316;`) dans `options.css` et élimination des teintes violettes résiduelles.
+  - **Contraste de Texte en Mode Sombre** : Correction du texte du bouton primaire en mode sombre (`color: #0f172a;` sur fond orange vif) garantissant un ratio de contraste supérieur à 9:1.
+  - **Fluidité Visuelle à 60 FPS** : Suppression du conflit de transitions CSS sur les 5 barres spectrales (`will-change: transform` pur sans transition concurrente).
+  - **Nettoyage du Code Mort** : Retrait définitif des sélecteurs CSS obsolètes liés aux anciens modes de traitement dans `content-injected.js` et `setup.css`.
+  - **Favicons Standardisés** : Intégration du favicon `icons/icon-32.png` dans `setup.html` et `options.html`.
+- **Permissions Moindre Privilège** :
+  - Retrait de la permission `clipboardWrite` superflue dans `manifest.json`.
+  - Déplacement de `localhost` et `127.0.0.1` vers `optional_host_permissions` pour garantir une validation AMO irréprochable sans avertissement d'origine excessive.
+
+---
+
 ## [1.2.0] - 2026-10-18
 
 ### Épuration des Permissions Réseau & Sécurité Moindre Privilège (Option A)

@@ -39,6 +39,15 @@ function t(cle) {
  * Parcourt le DOM et applique les traductions sur tous les attributs data-i18n*.
  */
 function appliquerI18n() {
+  if (api && api.i18n && typeof api.i18n.getUILanguage === "function") {
+    try {
+      const uiLang = api.i18n.getUILanguage();
+      if (uiLang) {
+        document.documentElement.lang = uiLang.substring(0, 2);
+      }
+    } catch {}
+  }
+
   document.querySelectorAll("[data-i18n]").forEach((el) => {
     const cle = el.getAttribute("data-i18n");
     const msg = t(cle);

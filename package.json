@@ -1,6 +1,6 @@
 {
   "name": "magic-voice-scriber-firefox",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Smart semantic voice dictation inspired by Google Rambler and Mistral Voxtral for Mozilla Firefox (Mistral, Gemini, Local Whisper).",
   "author": "MTF Karukera",
   "license": "MPL-2.0",

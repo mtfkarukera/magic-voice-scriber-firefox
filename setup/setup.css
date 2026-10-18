@@ -455,61 +455,6 @@ body {
   color: #ef4444;
 }
 
-/* ── Modes de Dictée Cards ── */
-.mvs-modes-selection {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 12px;
-}
-
-.mvs-mode-option {
-  cursor: pointer;
-}
-
-.mvs-mode-option input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.mvs-mode-card {
-  padding: 16px;
-  border: 2px solid var(--setup-card-border);
-  border-radius: 10px;
-  background: var(--setup-panel-bg);
-  transition: all 0.2s ease;
-}
-
-.mvs-mode-option.selected .mvs-mode-card,
-.mvs-mode-option input:checked + .mvs-mode-card {
-  border-color: var(--setup-accent);
-  background: var(--setup-accent-subtle);
-}
-
-.mvs-mode-option:focus-within .mvs-mode-card,
-.mvs-mode-option input:focus-visible + .mvs-mode-card {
-  outline: 2px solid var(--setup-accent);
-  outline-offset: 2px;
-}
-
-.mvs-mode-icon {
-  font-size: 22px;
-  display: block;
-  margin-bottom: 6px;
-}
-
-.mvs-mode-card strong {
-  display: block;
-  font-size: 14px;
-  margin-bottom: 4px;
-}
-
-.mvs-mode-card p {
-  font-size: 12px;
-  color: var(--setup-text-sub);
-  line-height: 1.4;
-}
-
 /* ── Interrupteurs Switches dans le Setup ── */
 .mvs-switch-field {
   display: flex !important;
@@ -526,7 +471,7 @@ body {
 }
 
 .mvs-switch-field:hover {
-  border-color: rgba(109, 40, 217, 0.35);
+  border-color: rgba(249, 115, 22, 0.35);
   background: rgba(255, 255, 255, 0.035);
 }
 
@@ -779,17 +724,6 @@ kbd {
   line-height: 1.6;
   color: var(--setup-text-main);
   margin: 0;
-}
-
-.mvs-llm-modes-box {
-  margin-bottom: 20px;
-}
-
-.mvs-llm-modes-title {
-  font-size: 14px;
-  font-weight: 600;
-  margin-bottom: 12px;
-  color: var(--setup-text-main);
 }
 
 /* ── Bac à Sable Interactif (Étape 4) ── */

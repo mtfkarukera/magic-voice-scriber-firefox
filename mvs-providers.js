@@ -928,7 +928,21 @@
         }
 
         if (provider === "local") {
-          return { success: true, message: "OK" };
+          const urlCible = config.localSttUrl || "http://localhost:8000/v1/audio/transcriptions";
+          try {
+            const testUrl = new URL(urlCible);
+            await fetch(`${testUrl.protocol}//${testUrl.host}`, {
+              method: "HEAD",
+              signal: AbortSignal.timeout(3000)
+            });
+            return { success: true, message: "OK" };
+          } catch (err) {
+            // Si le serveur a répondu (même avec une erreur HTTP comme 404/405), le service est joignable
+            if (err.name !== "TimeoutError" && err.name !== "TypeError") {
+              return { success: true, message: "OK" };
+            }
+            return { success: false, message: "SERVICE_UNAVAILABLE" };
+          }
         }
 
         return { success: false, message: "UNKNOWN_PROVIDER" };

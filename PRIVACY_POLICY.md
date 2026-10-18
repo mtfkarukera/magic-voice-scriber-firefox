@@ -1,6 +1,6 @@
 # Politique de Confidentialité / Privacy Policy — Magic Voice Scriber for Firefox
 
-*Dernière mise à jour : 18 octobre 2026*
+*Dernière mise à jour : 19 octobre 2026*
 
 ---
 
@@ -27,8 +27,8 @@ Vos préférences (fournisseur actif, mode de voix préféré, URLs, clés d'API
 - **`scripting`** : Nécessaire pour injecter le widget vocal flottant et insérer le texte transcrit au point d'insertion actif de la page web.
 - **`storage`** : Permet de sauvegarder localement vos préférences et la configuration de vos moteurs d'IA.
 - **`menus`** : Permet d'accéder rapidement aux options via un clic droit sur l'icône de l'extension.
-- **`clipboardWrite`** : Permet de copier d'un clic les exemples et clés lors de la configuration.
-- **Permissions d'hôtes (`host_permissions`)** : Permettent au script d'arrière-plan de contacter directement l'API du moteur IA que vous avez sélectionné (Google Gemini, Mistral ou `localhost`).
+- **Permissions d'hôtes (`host_permissions`)** : Permettent au script d'arrière-plan de contacter directement l'API du moteur IA que vous avez sélectionné (Google Gemini ou Mistral).
+- **Permissions d'hôtes optionnelles (`optional_host_permissions`)** : Permettent de contacter un serveur Whisper local sur `localhost` / `127.0.0.1` à la demande de l'utilisateur.
 
 ---
 
@@ -55,5 +55,5 @@ Your preferences (active provider, voice mode preference, endpoints, API keys, e
 - **`scripting`**: Required to inject the lightweight floating voice widget and insert cleaned text at the active insertion point.
 - **`storage`**: Used to locally save your preferences and AI provider settings.
 - **`menus`**: Provides quick access to extension settings via right-click on the toolbar icon.
-- **`clipboardWrite`**: Allows convenient one-click copying during setup and testing.
-- **Host Permissions (`host_permissions`)**: Allow the background script to communicate directly with your selected AI provider (Google Gemini, Mistral, or `localhost`).
+- **Host Permissions (`host_permissions`)**: Allow the background script to communicate directly with your selected AI provider (Google Gemini or Mistral).
+- **Optional Host Permissions (`optional_host_permissions`)**: Allow on-demand local communication with self-hosted Whisper servers on `localhost` / `127.0.0.1`.

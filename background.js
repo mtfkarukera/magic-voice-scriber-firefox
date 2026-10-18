@@ -927,7 +927,7 @@ async function traiterMessage(message, expediteur) {
   }
 
   // Validation stricte de l'expéditeur : seuls nos propres scripts internes sont autorisés
-  if (!expediteur || (api.runtime.id && expediteur.id !== api.runtime.id)) {
+  if (!expediteur || !expediteur.id || (api.runtime && api.runtime.id && expediteur.id !== api.runtime.id)) {
     return { success: false, error: "UNAUTHORIZED" };
   }
 

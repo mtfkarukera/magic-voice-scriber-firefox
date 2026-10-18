@@ -641,12 +641,14 @@ describe("4. Sécurité DOM, CSP & Garde-fou DEBUG (Règles 11, 12, 14)", () => 
   it("respecte le principe du moindre privilège pour les host_permissions (Trio Champion uniquement)", () => {
     const manifest = JSON.parse(fs.readFileSync(path.join(RACINE, "manifest.json"), "utf8"));
     const hosts = manifest.host_permissions || [];
+    const optionalHosts = manifest.optional_host_permissions || [];
+    const allHosts = [...hosts, ...optionalHosts];
     assert.equal(hosts.includes("https://api.openai.com/*"), false, "api.openai.com ne doit pas figurer dans manifest.json");
     assert.equal(hosts.includes("https://api.groq.com/*"), false, "api.groq.com ne doit pas figurer dans manifest.json");
     assert.equal(hosts.includes("https://generativelanguage.googleapis.com/*"), true, "Gemini doit figurer dans host_permissions");
     assert.equal(hosts.includes("https://api.mistral.ai/*"), true, "Mistral doit figurer dans host_permissions");
-    assert.equal(hosts.includes("http://localhost/*"), true, "Localhost doit figurer dans host_permissions");
-    assert.equal(manifest.version, "1.2.0", "La version du manifest doit être 1.2.0");
+    assert.equal(allHosts.includes("http://localhost/*"), true, "Localhost doit figurer dans host_permissions ou optional_host_permissions");
+    assert.equal(manifest.version, "1.3.0", "La version du manifest doit être 1.3.0");
   });
 });
 

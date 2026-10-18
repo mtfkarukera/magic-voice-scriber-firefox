@@ -77,7 +77,7 @@ magic-voice-scriber-firefox/
 ├── icons/                         # Icônes PNG détourées Alpha (16, 32, 48, 64, 128)
 ├── _locales/                      # Dictionnaires i18n (en, fr, es, pt, de, vi)
 ├── test/
-│   └── mvs.test.js                # Suite de 25 tests unitaires automatisés (100% succès)
+│   └── mvs.test.js                # Suite de 29 tests unitaires automatisés (100% succès)
 ├── build.sh                       # Script de packaging .xpi vers dist/ avec garde-fou DEBUG
 └── icon.png                       # Icône officielle 128x128
 ```

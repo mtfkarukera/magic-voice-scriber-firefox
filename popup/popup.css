@@ -156,21 +156,19 @@ body {
   font-size: 11px;
   color: var(--mvs-text-muted);
   max-width: 220px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  word-break: break-word;
 }
 
 .mb-sm {
   margin-bottom: 6px;
 }
 
-/* ── Interrupteurs Switches ── */
+/* ── Interrupteurs Switches (WCAG 2.5.8 : 42x24px) ── */
 .mvs-switch {
   position: relative;
   display: inline-block;
-  width: 36px;
-  height: 20px;
+  width: 42px;
+  height: 24px;
   flex-shrink: 0;
 }
 
@@ -195,8 +193,8 @@ body {
 .mvs-slider:before {
   position: absolute;
   content: "";
-  height: 14px;
-  width: 14px;
+  height: 18px;
+  width: 18px;
   left: 3px;
   bottom: 3px;
   background-color: #ffffff;
@@ -210,10 +208,13 @@ body {
 }
 
 .mvs-switch input:checked + .mvs-slider:before {
-  transform: translateX(16px);
+  transform: translateX(18px);
 }
 
-.mvs-switch input:focus-visible + .mvs-slider {
+.mvs-switch input:focus-visible + .mvs-slider,
+.mvs-btn-quick-dictate:focus-visible,
+.mvs-segment-btn:focus-visible,
+.mvs-footer-link-btn:focus-visible {
   outline: 2px solid var(--mvs-primary);
   outline-offset: 2px;
 }

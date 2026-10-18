@@ -26,3 +26,4 @@ submission_kit.md
 .env
 .env.*
 .web-ext-config.cjs
+.amo-upload-uuid

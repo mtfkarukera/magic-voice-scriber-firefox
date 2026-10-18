@@ -37,6 +37,15 @@ function t(cle) {
  * Applique l'internationalisation sur tous les éléments déclaratifs du DOM.
  */
 function appliquerI18n() {
+  if (api && api.i18n && typeof api.i18n.getUILanguage === "function") {
+    try {
+      const uiLang = api.i18n.getUILanguage();
+      if (uiLang) {
+        document.documentElement.lang = uiLang.substring(0, 2);
+      }
+    } catch {}
+  }
+
   document.querySelectorAll("[data-i18n]").forEach((el) => {
     const cle = el.getAttribute("data-i18n");
     const msg = t(cle);
@@ -67,6 +76,17 @@ document.addEventListener("DOMContentLoaded", async () => {
   const btnQuickDictate = document.getElementById("btn-quick-dictate");
   const btnOpenSetup = document.getElementById("btn-open-setup");
   const btnOpenOptions = document.getElementById("btn-open-options");
+
+  // Version dynamique depuis le manifest
+  const versionEl = document.querySelector(".mvs-popup-version");
+  if (versionEl && api && api.runtime && typeof api.runtime.getManifest === "function") {
+    try {
+      const manifest = api.runtime.getManifest();
+      if (manifest && manifest.version) {
+        versionEl.textContent = `v${manifest.version}`;
+      }
+    } catch {}
+  }
 
   // Détection macOS pour le formatage visuel des touches
   const estMac = /Mac/i.test(navigator.userAgent || navigator.platform || "");
@@ -136,10 +156,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   const raccourciActif = config.shortcutKey === "KeyD" ? "KeyD" : "KeyS";
   if (raccourciActif === "KeyD") {
     btnShortcutD.classList.add("active");
+    btnShortcutD.setAttribute("aria-pressed", "true");
     btnShortcutS.classList.remove("active");
+    btnShortcutS.setAttribute("aria-pressed", "false");
   } else {
     btnShortcutS.classList.add("active");
+    btnShortcutS.setAttribute("aria-pressed", "true");
     btnShortcutD.classList.remove("active");
+    btnShortcutD.setAttribute("aria-pressed", "false");
   }
 
   /**
@@ -192,10 +216,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     const touche = code === "KeyD" ? "KeyD" : "KeyS";
     if (touche === "KeyD") {
       btnShortcutD.classList.add("active");
+      btnShortcutD.setAttribute("aria-pressed", "true");
       btnShortcutS.classList.remove("active");
+      btnShortcutS.setAttribute("aria-pressed", "false");
     } else {
       btnShortcutS.classList.add("active");
+      btnShortcutS.setAttribute("aria-pressed", "true");
       btnShortcutD.classList.remove("active");
+      btnShortcutD.setAttribute("aria-pressed", "false");
     }
     api.runtime
       .sendMessage({

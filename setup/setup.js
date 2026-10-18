@@ -38,6 +38,15 @@ function t(cle) {
  * Applique l'internationalisation sur tous les éléments déclaratifs du DOM.
  */
 function appliquerI18n() {
+  if (api && api.i18n && typeof api.i18n.getUILanguage === "function") {
+    try {
+      const uiLang = api.i18n.getUILanguage();
+      if (uiLang) {
+        document.documentElement.lang = uiLang.substring(0, 2);
+      }
+    } catch {}
+  }
+
   document.querySelectorAll("[data-i18n]").forEach((el) => {
     const cle = el.getAttribute("data-i18n");
     const msg = t(cle);
@@ -144,6 +153,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
     window.scrollTo({ top: 0, behavior: "smooth" });
+
+    // Restauration du focus accessible sur le titre de l'étape active
+    const panneauActif = panels[numero];
+    if (panneauActif) {
+      const titreEtape = panneauActif.querySelector("h2");
+      if (titreEtape) {
+        titreEtape.setAttribute("tabindex", "-1");
+        titreEtape.focus({ preventScroll: true });
+      }
+    }
   }
 
   document.querySelectorAll(".mvs-btn-next").forEach((btn) => {

@@ -31,7 +31,7 @@
           <span id="popup-domain-name" class="mvs-card-subtext">domaine.com</span>
         </div>
         <label class="mvs-switch" aria-label="Activer ou désactiver Magic Voice Scriber sur ce site">
-          <input type="checkbox" id="switch-site-enabled" checked>
+          <input type="checkbox" id="switch-site-enabled" role="switch" checked>
           <span class="mvs-slider"></span>
         </label>
       </div>
@@ -45,7 +45,7 @@
           <span class="mvs-card-subtext" data-i18n="popupCaretGemDesc">Afficher la bulle orange près du curseur au repos</span>
         </div>
         <label class="mvs-switch" aria-label="Afficher la Goutte Vocale au repos sous le curseur">
-          <input type="checkbox" id="switch-caret-gem">
+          <input type="checkbox" id="switch-caret-gem" role="switch">
           <span class="mvs-slider"></span>
         </label>
       </div>
@@ -57,10 +57,10 @@
         <span class="mvs-card-label" data-i18n="popupShortcutLabel">Raccourci de déclenchement</span>
       </div>
       <div class="mvs-segmented-control" role="group" aria-label="Choix du raccourci clavier">
-        <button type="button" class="mvs-segment-btn active" id="btn-shortcut-s" data-shortcut="KeyS">
+        <button type="button" class="mvs-segment-btn active" id="btn-shortcut-s" data-shortcut="KeyS" aria-pressed="true">
           <kbd id="label-shortcut-s">Alt + Shift + S</kbd>
         </button>
-        <button type="button" class="mvs-segment-btn" id="btn-shortcut-d" data-shortcut="KeyD">
+        <button type="button" class="mvs-segment-btn" id="btn-shortcut-d" data-shortcut="KeyD" aria-pressed="false">
           <kbd id="label-shortcut-d">Alt + Shift + D</kbd>
         </button>
       </div>
