@@ -30,19 +30,11 @@ const DEBUG = false;
 
   const api = globalThis.browser || globalThis.messenger;
   const DUREE_OPTIMALE_MAX_SEC = 300; // 5 minutes max par segment
-  const ORDRE_MODES_VOIX = ["natural", "pro", "bullets"];
-
-  const META_MODES_VOIX = {
-    natural: { icone: "🎙️", cleLabel: "modeNaturalLabel", codeCouleur: "#ea580c" },
-    pro: { icone: "👔", cleLabel: "modeProLabel", codeCouleur: "#0284c7" },
-    bullets: { icone: "📋", cleLabel: "modeBulletsLabel", codeCouleur: "#059669" }
-  };
 
   // ── État interne du widget web ──────────────────────────────────────────
   // "HIDDEN" | "CARET_GEM" | "RECORDING" | "PAUSED" | "THINKING" | "ERROR"
   let etatCourant = "HIDDEN";
-  let fournisseurActif = "gemini";
-  let modeVoixActif = "natural";
+  let fournisseurActif = "mistral";
   let secondesEcoulees = 0;
   let idIntervalleChrono = null;
   let idIntervalleKeepAlive = null;
@@ -54,13 +46,24 @@ const DEBUG = false;
   let dernierTexteLive = "";
   let demarrageEnCours = false;
 
+  // ── État de la capture audio in-situ (Gecko native) ──────────────────────
+  let fluxMediaLocal = null;
+  let mediaRecorderLocal = null;
+  let tranchesAudioLocales = [];
+  let dernierBlobLocal = null;
+  let contexteAudioLocal = null;
+  let noeudSourceLocal = null;
+  let analyseurLocal = null;
+  let donneesFreqLocales = null;
+  let donneesTempsLocales = null;
+
   // Configuration locale synchronisée
   let configLocale = {
     caretGemEnabled: false,
     sitesExclus: [],
     shortcutKey: "KeyS",
     provider: "gemini",
-    geminiModel: "gemini-3.5-transcribe-live"
+    geminiModel: "gemini-3.5-transcribe"
   };
 
   // Références DOM dans le Shadow Root fermé
@@ -73,15 +76,18 @@ const DEBUG = false;
   let barresBlanchesEls = [];
   let timerEl = null;
   let tickerLiveEl = null;
-  let btnModeMorphing = null;
-  let iconeModeEl = null;
-  let labelModeEl = null;
   let btnPause = null;
   let btnAnnuler = null;
   let banniereErreur = null;
   let texteErreurEl = null;
   let btnReessayer = null;
   let zoneStatutA11y = null;
+
+  // Variables d'état pour le glisser-déposer (Draggable) de la pilule
+  let positionGlissee = null;
+  let estEnGlissement = false;
+  let pointDepartGlissement = { x: 0, y: 0 };
+  let offsetDepartGlissement = { x: 0, y: 0 };
 
   /**
    * Vocalise un message d'état pour les lecteurs d'écran.
@@ -195,17 +201,48 @@ const DEBUG = false;
    * Calcule les coordonnées viewport optimales pour afficher le widget.
    * @returns {{ x: number, y: number, isCenter: boolean }}
    */
-  function calculerPositionWidget() {
-    // Cas spécial Google Docs : pilule centrée en bas d'écran
+  function calculerPositionWidget(elementForce = null, etatForce = null) {
+    const cible = elementForce || elementCibleActif;
+    const etat = etatForce || etatCourant;
+
+    // Cas spécial Google Docs : pilule calée en bas à droite (anti-collision Gemini Docs)
     if (window.location.hostname === "docs.google.com") {
+      const estCapsule = etat !== "CARET_GEM";
+      const largeur = estCapsule ? 260 : 36;
+      const hauteur = estCapsule ? 56 : 36;
       return {
-        x: Math.round(window.innerWidth / 2),
-        y: window.innerHeight - 80,
-        isCenter: true
+        x: Math.max(12, window.innerWidth - largeur - 28),
+        y: Math.max(12, window.innerHeight - hauteur - 28),
+        isCenter: false
       };
     }
 
-    // 1. Tentative par le curseur de sélection (Range) pour contenteditable
+    // 1. Repli prioritaire sur le rectangle de l'élément cible actif (input, textarea, contenteditable)
+    if (cible && typeof cible.getBoundingClientRect === "function") {
+      const rect = cible.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        const estCapsule = etat !== "CARET_GEM";
+        let decallageY;
+        if (estCapsule) {
+          decallageY = rect.bottom + 8;
+        } else if (rect.height >= 50) {
+          // Champ multi-lignes (textarea, éditeur étendu, carte Keep) : calé dans le coin supérieur droit
+          decallageY = rect.top + 10;
+        } else {
+          // Champ mono-ligne (input standard) : centré verticalement à droite
+          decallageY = rect.top + (rect.height / 2) - 9;
+        }
+        const decallageX = estCapsule ? rect.left + 8 : rect.right - 28;
+
+        return {
+          x: Math.min(window.innerWidth - (estCapsule ? 260 : 36), Math.max(12, decallageX)),
+          y: Math.min(window.innerHeight - 50, Math.max(10, decallageY)),
+          isCenter: false
+        };
+      }
+    }
+
+    // 2. Repli secondaire par le curseur de sélection (Range) si le conteneur n'a pas de dimensions
     try {
       const sel = window.getSelection();
       if (sel && sel.rangeCount > 0) {
@@ -224,23 +261,6 @@ const DEBUG = false;
       }
     } catch {}
 
-    // 2. Repli sur le rectangle de l'élément cible actif (input, textarea)
-    if (elementCibleActif && typeof elementCibleActif.getBoundingClientRect === "function") {
-      const rect = elementCibleActif.getBoundingClientRect();
-      if (rect.width > 0 && rect.height > 0) {
-        // En mode capsule complète, placer juste en dessous du champ ou à droite
-        const estCapsule = etatCourant !== "CARET_GEM";
-        const decallageY = estCapsule ? rect.bottom + 8 : rect.top + (rect.height / 2) - 10;
-        const decallageX = estCapsule ? rect.left + 8 : rect.right - 26;
-
-        return {
-          x: Math.min(window.innerWidth - (estCapsule ? 260 : 36), Math.max(12, decallageX)),
-          y: Math.min(window.innerHeight - 50, Math.max(10, decallageY)),
-          isCenter: false
-        };
-      }
-    }
-
     // 3. Repli par défaut au centre bas du viewport
     return {
       x: Math.round(window.innerWidth / 2),
@@ -254,6 +274,15 @@ const DEBUG = false;
    */
   function actualiserPositionCSS() {
     if (!conteneurWidget) return;
+
+    // Si l'utilisateur a déplacé manuellement la pilule pendant cette session active
+    if (positionGlissee && etatCourant !== "HIDDEN" && etatCourant !== "CARET_GEM") {
+      conteneurWidget.style.left = `${positionGlissee.x}px`;
+      conteneurWidget.style.top = `${positionGlissee.y}px`;
+      conteneurWidget.style.transform = "none";
+      return;
+    }
+
     const { x, y, isCenter } = calculerPositionWidget();
 
     if (isCenter) {
@@ -494,7 +523,7 @@ const DEBUG = false;
         background-color: #ffffff;
       }
 
-      /* ── Pilule Sonore Déployée (Glassmorphism) ── */
+      /* ── Pilule Sonore Déployée (Glassmorphism & Déplaçable) ── */
       .mvs-capsule {
         display: inline-flex;
         align-items: center;
@@ -507,6 +536,11 @@ const DEBUG = false;
         border-radius: 24px;
         box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(0, 0, 0, 0.2);
         transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        cursor: grab;
+      }
+      .mvs-capsule.mvs-dragging {
+        cursor: grabbing;
+        user-select: none;
       }
 
       /* Bouton Rouge d'Ondes Vocales */
@@ -653,7 +687,13 @@ const DEBUG = false;
     // 1. Goutte Vocale
     boutonGoutte = document.createElement("div");
     boutonGoutte.className = "mvs-gem mvs-hidden";
-    boutonGoutte.title = t("btnTestMic") || "Démarrer la dictée vocale";
+    const estMacPlateforme = typeof navigator !== "undefined" && (
+      (navigator.platform && navigator.platform.toUpperCase().includes("MAC")) ||
+      (navigator.userAgent && navigator.userAgent.includes("Mac"))
+    );
+    boutonGoutte.title = estMacPlateforme
+      ? "Démarrer la dictée vocale (⌃ ⇧ S)"
+      : "Démarrer la dictée vocale (Alt + Shift + S)";
     const dot = document.createElement("div");
     dot.className = "mvs-gem-dot";
     boutonGoutte.appendChild(dot);
@@ -687,18 +727,6 @@ const DEBUG = false;
     tickerLiveEl = document.createElement("span");
     tickerLiveEl.className = "mvs-live-ticker mvs-hidden";
     vueCapsule.appendChild(tickerLiveEl);
-
-    // Bouton Morphing de Mode
-    btnModeMorphing = document.createElement("button");
-    btnModeMorphing.type = "button";
-    btnModeMorphing.className = "mvs-mode-btn mvs-hidden";
-    iconeModeEl = document.createElement("span");
-    iconeModeEl.textContent = "🎙️";
-    labelModeEl = document.createElement("span");
-    labelModeEl.textContent = "Rambler";
-    btnModeMorphing.appendChild(iconeModeEl);
-    btnModeMorphing.appendChild(labelModeEl);
-    vueCapsule.appendChild(btnModeMorphing);
 
     // Bouton Pause
     btnPause = document.createElement("button");
@@ -765,15 +793,52 @@ const DEBUG = false;
       annulerDictée();
     });
 
-    btnModeMorphing.addEventListener("mousedown", (e) => {
-      e.preventDefault();
-      cyclerModeVoix();
-    });
-
     btnReessayer.addEventListener("mousedown", (e) => {
       e.preventDefault();
       reessayerTranscription();
     });
+
+    // ── Gestion du Glisser-Déposer (Draggable) de la capsule ──
+    vueCapsule.addEventListener("mousedown", (e) => {
+      // Ignorer si le clic provient d'un bouton d'action ou autre élément interactif
+      if (e.button !== 0 || e.target.closest("button") || e.target.closest(".mvs-ctrl-btn")) {
+        return;
+      }
+      e.preventDefault();
+      estEnGlissement = true;
+      vueCapsule.classList.add("mvs-dragging");
+      pointDepartGlissement = { x: e.clientX, y: e.clientY };
+      const rect = conteneurWidget.getBoundingClientRect();
+      offsetDepartGlissement = { x: rect.left, y: rect.top };
+    });
+
+    window.addEventListener(
+      "mousemove",
+      (e) => {
+        if (!estEnGlissement) return;
+        const deltaX = e.clientX - pointDepartGlissement.x;
+        const deltaY = e.clientY - pointDepartGlissement.y;
+        const rect = conteneurWidget.getBoundingClientRect();
+        const larg = rect.width || 260;
+        const haut = rect.height || 56;
+        const nouveauX = Math.max(10, Math.min(window.innerWidth - larg - 10, offsetDepartGlissement.x + deltaX));
+        const nouveauY = Math.max(10, Math.min(window.innerHeight - haut - 10, offsetDepartGlissement.y + deltaY));
+        positionGlissee = { x: nouveauX, y: nouveauY };
+        actualiserPositionCSS();
+      },
+      { passive: true }
+    );
+
+    window.addEventListener(
+      "mouseup",
+      () => {
+        if (estEnGlissement) {
+          estEnGlissement = false;
+          if (vueCapsule) vueCapsule.classList.remove("mvs-dragging");
+        }
+      },
+      { passive: true }
+    );
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -788,10 +853,15 @@ const DEBUG = false;
     etatCourant = nouvelEtat;
     actualiserPositionCSS();
 
+    if (!conteneurWidget) return;
+
     if (nouvelEtat === "HIDDEN") {
+      positionGlissee = null;
+      estEnGlissement = false;
+      if (vueCapsule) vueCapsule.classList.remove("mvs-dragging");
       conteneurWidget.classList.add("mvs-hidden");
-      boutonGoutte.classList.add("mvs-hidden");
-      vueCapsule.classList.add("mvs-hidden");
+      if (boutonGoutte) boutonGoutte.classList.add("mvs-hidden");
+      if (vueCapsule) vueCapsule.classList.add("mvs-hidden");
       arreterAnimationOndes();
       arreterChrono();
       arreterKeepAlive();
@@ -801,8 +871,8 @@ const DEBUG = false;
     conteneurWidget.classList.remove("mvs-hidden");
 
     if (nouvelEtat === "CARET_GEM") {
-      boutonGoutte.classList.remove("mvs-hidden");
-      vueCapsule.classList.add("mvs-hidden");
+      if (boutonGoutte) boutonGoutte.classList.remove("mvs-hidden");
+      if (vueCapsule) vueCapsule.classList.add("mvs-hidden");
       arreterAnimationOndes();
       arreterChrono();
       arreterKeepAlive();
@@ -810,46 +880,144 @@ const DEBUG = false;
     }
 
     // Dans tous les autres états, la capsule est visible
-    boutonGoutte.classList.add("mvs-hidden");
-    vueCapsule.classList.remove("mvs-hidden");
+    if (boutonGoutte) boutonGoutte.classList.add("mvs-hidden");
+    if (vueCapsule) vueCapsule.classList.remove("mvs-hidden");
 
     if (nouvelEtat === "RECORDING") {
-      btnOndeRouge.classList.remove("paused");
-      btnPause.textContent = "⏸";
-      btnPause.title = "Mettre en pause";
-      banniereErreur.classList.add("mvs-hidden");
+      if (btnOndeRouge) btnOndeRouge.classList.remove("paused");
+      if (btnPause) {
+        btnPause.textContent = "⏸";
+        btnPause.title = "Mettre en pause";
+      }
+      if (banniereErreur) banniereErreur.classList.add("mvs-hidden");
       demarrerAnimationOndes();
       demarrerChrono();
       demarrerKeepAlive();
       annoncerA11y("Enregistrement vocal en cours");
     } else if (nouvelEtat === "PAUSED") {
-      btnOndeRouge.classList.add("paused");
-      btnPause.textContent = "▶";
-      btnPause.title = "Reprendre l'enregistrement";
+      if (btnOndeRouge) btnOndeRouge.classList.add("paused");
+      if (btnPause) {
+        btnPause.textContent = "▶";
+        btnPause.title = "Reprendre l'enregistrement";
+      }
       arreterAnimationOndes();
       arreterChrono();
       annoncerA11y("Enregistrement en pause");
     } else if (nouvelEtat === "THINKING") {
       arreterAnimationOndes();
       arreterChrono();
-      timerEl.textContent = "…";
-      tickerLiveEl.classList.remove("mvs-hidden");
-      tickerLiveEl.textContent = t("statusTranscribing") || "Transcription…";
+      if (timerEl) timerEl.textContent = "…";
+      if (tickerLiveEl) {
+        tickerLiveEl.classList.remove("mvs-hidden");
+        tickerLiveEl.textContent = t("statusTranscribing") || "Transcription…";
+      }
       annoncerA11y("Transcription en cours");
     } else if (nouvelEtat === "ERROR") {
       arreterAnimationOndes();
       arreterChrono();
-      banniereErreur.classList.remove("mvs-hidden");
+      if (banniereErreur) banniereErreur.classList.remove("mvs-hidden");
     }
   }
 
   // ── Animation des 5 barres blanches d'ondes vocales ──
+  // ── Utilitaires de conversion et libération audio locale ──
+  function libererAudioLocal() {
+    if (mediaRecorderLocal) {
+      try {
+        if (mediaRecorderLocal.state !== "inactive") {
+          mediaRecorderLocal.stop();
+        }
+      } catch {}
+      mediaRecorderLocal = null;
+    }
+    if (fluxMediaLocal) {
+      fluxMediaLocal.getTracks().forEach((piste) => {
+        try {
+          piste.stop();
+        } catch {}
+      });
+      fluxMediaLocal = null;
+    }
+    if (noeudSourceLocal) {
+      try {
+        noeudSourceLocal.disconnect();
+      } catch {}
+      noeudSourceLocal = null;
+    }
+    if (contexteAudioLocal && contexteAudioLocal.state !== "closed") {
+      contexteAudioLocal.close().catch(() => {});
+      contexteAudioLocal = null;
+    }
+    analyseurLocal = null;
+    donneesFreqLocales = null;
+    donneesTempsLocales = null;
+  }
+
+  function blobVersBase64Local(blob) {
+    return new Promise((resolve, reject) => {
+      const lecteur = new FileReader();
+      lecteur.onloadend = () => {
+        const res = lecteur.result;
+        if (typeof res === "string") {
+          const b64 = res.includes(",") ? res.split(",")[1].trim() : res.trim();
+          resolve(b64);
+        } else {
+          reject(new Error("EMPTY_RECORDING"));
+        }
+      };
+      lecteur.onerror = () => reject(new Error("EMPTY_RECORDING"));
+      lecteur.readAsDataURL(blob);
+    });
+  }
+
+  function calculerCinqBarresVocalesLocales() {
+    if (!analyseurLocal || !donneesFreqLocales || !donneesTempsLocales) {
+      return [0.22, 0.35, 0.5, 0.35, 0.22];
+    }
+    analyseurLocal.getByteFrequencyData(donneesFreqLocales);
+    analyseurLocal.getByteTimeDomainData(donneesTempsLocales);
+
+    let sommeCarres = 0;
+    for (let i = 0; i < donneesTempsLocales.length; i++) {
+      const norm = (donneesTempsLocales[i] - 128) / 128;
+      sommeCarres += norm * norm;
+    }
+    const energieRms = Math.sqrt(sommeCarres / donneesTempsLocales.length);
+
+    const plages = [
+      [1, 4],
+      [4, 9],
+      [9, 18],
+      [18, 32],
+      [32, 52]
+    ];
+    const profilSymetrique = [0.65, 0.9, 1.15, 0.9, 0.65];
+    const coefficientsFreq = [2.2, 3.0, 3.6, 3.0, 2.2];
+
+    return plages.map(([debut, fin], idx) => {
+      let somme = 0;
+      const limite = Math.min(fin, donneesFreqLocales.length);
+      const nb = Math.max(1, limite - debut);
+      for (let i = debut; i < limite; i++) {
+        somme += donneesFreqLocales[i];
+      }
+      const moyenneFreq = somme / (nb * 255);
+      const composanteFreq = moyenneFreq * coefficientsFreq[idx];
+      const composanteRms = energieRms * profilSymetrique[idx];
+      const valeur = 0.18 + Math.max(composanteFreq, composanteRms);
+      return Number(Math.min(1, Math.max(0.18, valeur)).toFixed(2));
+    });
+  }
+
+  // ── Animation des 5 barres blanches d'ondes vocales à 60 FPS in-situ ──
   function demarrerAnimationOndes() {
     if (idBoucleAnimation) return;
     const animer = () => {
+      if (etatCourant === "RECORDING") {
+        ciblesBarres = calculerCinqBarresVocalesLocales();
+      }
       phaseOnde += 0.08;
       for (let i = 0; i < 5; i++) {
-        // Interpolation douce vers la cible calculée par l'AudioContext
         hauteursBarres[i] += (ciblesBarres[i] - hauteursBarres[i]) * 0.35;
         const echelle = Math.max(0.18, Math.min(1.0, hauteursBarres[i]));
         if (barresBlanchesEls[i]) {
@@ -897,7 +1065,9 @@ const DEBUG = false;
     if (idIntervalleKeepAlive) return;
     idIntervalleKeepAlive = setInterval(() => {
       if (etatCourant === "RECORDING" || etatCourant === "PAUSED") {
-        api.runtime.sendMessage({ action: "keepAliveAudioSession" }).catch(() => {});
+        if (api && api.runtime && typeof api.runtime.sendMessage === "function") {
+          api.runtime.sendMessage({ action: "keepAliveAudioSession" }).catch(() => {});
+        }
       }
     }, 8000);
   }
@@ -909,36 +1079,13 @@ const DEBUG = false;
     }
   }
 
-  // ── Bouton Morphing de Mode Voix (Rambler, Pro, Bullets) ──
-  function actualiserAffichageModeVoix() {
-    if (!btnModeMorphing) return;
-    if (fournisseurActif === "gemini") {
-      // Invariant Strict #1 : masqué pour Gemini SMART natif
-      btnModeMorphing.classList.add("mvs-hidden");
-      return;
-    }
-    btnModeMorphing.classList.remove("mvs-hidden");
-    const meta = META_MODES_VOIX[modeVoixActif] || META_MODES_VOIX.natural;
-    iconeModeEl.textContent = meta.icone;
-    labelModeEl.textContent = t(meta.cleLabel) || modeVoixActif;
-  }
-
-  async function cyclerModeVoix() {
-    const idx = ORDRE_MODES_VOIX.indexOf(modeVoixActif);
-    const nouveau = ORDRE_MODES_VOIX[(idx + 1) % ORDRE_MODES_VOIX.length];
-    modeVoixActif = nouveau;
-    actualiserAffichageModeVoix();
-    try {
-      await api.runtime.sendMessage({ action: "saveVoiceMode", voiceMode: nouveau });
-    } catch {}
-  }
-
   // ═══════════════════════════════════════════════════════════════════════════
-  // 5. ACTIONS VOCALES & COMMUNICATION BACKGROUND
+  // 5. ACTIONS VOCALES IN-SITU & COMMUNICATION BACKGROUND
   // ═══════════════════════════════════════════════════════════════════════════
 
   /**
-   * Démarre la session d'enregistrement vocal.
+   * Démarre la session d'enregistrement vocal in-situ dans l'onglet actif.
+   * L'invite de permission native du micro s'affiche directement dans la page.
    */
   async function demarrerDictée() {
     if (demarrageEnCours || estDomaineExclu()) return;
@@ -952,56 +1099,171 @@ const DEBUG = false;
       tickerLiveEl.classList.add("mvs-hidden");
     }
 
-    definirEtat("RECORDING");
-
+    // 1. Vérification de la configuration active auprès du background
     try {
-      const rep = await api.runtime.sendMessage({ action: "startAudioSession" });
-      if (!rep || !rep.success) {
-        const err = rep && rep.error ? rep.error : "SERVICE_UNAVAILABLE";
-        if (err === "NOT_CONFIGURED") {
-          // Ouvrir le wizard setup si non configuré
-          api.runtime.sendMessage({ action: "openSetup" }).catch(() => {});
-          reinitialiserApresAction();
-          return;
-        }
-        afficherErreur(err);
+      const configRep = await api.runtime.sendMessage({ action: "getConfig" });
+      if (!configRep || !configRep.isConfigured) {
+        api.runtime.sendMessage({ action: "openSetup" }).catch(() => {});
+        reinitialiserApresAction();
+        demarrageEnCours = false;
         return;
       }
-
-      if (rep.activeVoiceMode) modeVoixActif = rep.activeVoiceMode;
-      if (rep.provider) fournisseurActif = rep.provider;
-      actualiserAffichageModeVoix();
-    } catch (err) {
-      if (DEBUG) console.error("[MagicVoiceScriber] Échec startAudioSession :", err);
+      fournisseurActif = configRep.provider || "mistral";
+    } catch {
       afficherErreur("SERVICE_UNAVAILABLE");
-    } finally {
       demarrageEnCours = false;
+      return;
+    }
+
+    // 2. Capture physique in-situ du microphone (Gecko User-Gesture)
+    let flux;
+    try {
+      flux = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      });
+    } catch (errMicro) {
+      if (DEBUG) console.error("[MagicVoiceScriber] Erreur getUserMedia in-situ :", errMicro);
+      afficherErreur("MIC_DENIED");
+      demarrageEnCours = false;
+      return;
+    }
+
+    fluxMediaLocal = flux;
+
+    // 3. AudioContext & AnalyserNode locaux pour animation des 5 barres à 60 FPS
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtx) {
+        contexteAudioLocal = new AudioCtx();
+        if (contexteAudioLocal.state === "suspended") {
+          await contexteAudioLocal.resume();
+        }
+        noeudSourceLocal = contexteAudioLocal.createMediaStreamSource(flux);
+        analyseurLocal = contexteAudioLocal.createAnalyser();
+        analyseurLocal.fftSize = 128;
+        analyseurLocal.smoothingTimeConstant = 0.65;
+        noeudSourceLocal.connect(analyseurLocal);
+        donneesFreqLocales = new Uint8Array(analyseurLocal.frequencyBinCount);
+        donneesTempsLocales = new Uint8Array(analyseurLocal.fftSize);
+      }
+    } catch (errCtx) {
+      if (DEBUG) console.warn("[MagicVoiceScriber] Analyseur audio non initialisé :", errCtx);
+    }
+
+    // 4. MediaRecorder local
+    tranchesAudioLocales = [];
+    const candidatsMime = [
+      "audio/webm;codecs=opus",
+      "audio/webm",
+      "audio/ogg;codecs=opus"
+    ];
+    let mimeChoisi = "audio/webm";
+    if (typeof MediaRecorder !== "undefined" && typeof MediaRecorder.isTypeSupported === "function") {
+      for (const m of candidatsMime) {
+        if (MediaRecorder.isTypeSupported(m)) {
+          mimeChoisi = m;
+          break;
+        }
+      }
+    }
+
+    try {
+      mediaRecorderLocal = new MediaRecorder(flux, { mimeType: mimeChoisi });
+    } catch {
+      mediaRecorderLocal = new MediaRecorder(flux);
+    }
+
+    mediaRecorderLocal.addEventListener("dataavailable", (e) => {
+      if (e.data && e.data.size > 0) {
+        tranchesAudioLocales.push(e.data);
+      }
+    });
+
+    mediaRecorderLocal.start(100);
+    definirEtat("RECORDING");
+    demarrageEnCours = false;
+
+    // Notifier le background de la session active
+    if (api && api.runtime && typeof api.runtime.sendMessage === "function") {
+      api.runtime.sendMessage({ action: "startAudioSession" }).catch(() => {});
     }
   }
 
   /**
-   * Met en pause ou reprend l'enregistrement audio.
+   * Met en pause ou reprend l'enregistrement audio in-situ.
    */
-  async function basculerPause() {
-    try {
-      const rep = await api.runtime.sendMessage({ action: "pauseResumeAudioSession" });
-      if (rep && rep.success) {
-        definirEtat(rep.state === "PAUSED" ? "PAUSED" : "RECORDING");
-      }
-    } catch {}
+  function basculerPause() {
+    if (!mediaRecorderLocal) return;
+    if (etatCourant === "RECORDING" && mediaRecorderLocal.state === "recording") {
+      try {
+        mediaRecorderLocal.pause();
+      } catch {}
+      definirEtat("PAUSED");
+    } else if (etatCourant === "PAUSED" && mediaRecorderLocal.state === "paused") {
+      try {
+        mediaRecorderLocal.resume();
+      } catch {}
+      definirEtat("RECORDING");
+    }
   }
 
   /**
-   * Arrête l'enregistrement, finalise la transcription et insère le texte.
+   * Arrête l'enregistrement, finalise la transcription et insère le texte propre au curseur.
    */
   async function arreterEtTranscrire() {
     definirEtat("THINKING");
 
+    const rec = mediaRecorderLocal;
+    const tranches = tranchesAudioLocales;
+    const mime = rec ? rec.mimeType || "audio/webm" : "audio/webm";
+
+    const blobFinal = await new Promise((resolve) => {
+      if (!rec || rec.state === "inactive") {
+        resolve(new Blob(tranches, { type: mime }));
+        return;
+      }
+      rec.addEventListener(
+        "stop",
+        () => {
+          resolve(new Blob(tranches, { type: mime }));
+        },
+        { once: true }
+      );
+      try {
+        if (typeof rec.requestData === "function" && rec.state === "recording") {
+          rec.requestData();
+        }
+        rec.stop();
+      } catch {
+        resolve(new Blob(tranches, { type: mime }));
+      }
+    });
+
+    libererAudioLocal();
+    dernierBlobLocal = blobFinal;
+
+    if (!blobFinal || blobFinal.size < 100) {
+      afficherErreur("EMPTY_RECORDING");
+      return;
+    }
+
+    let audioBase64;
+    try {
+      audioBase64 = await blobVersBase64Local(blobFinal);
+    } catch {
+      afficherErreur("EMPTY_RECORDING");
+      return;
+    }
+
     try {
       const rep = await api.runtime.sendMessage({
-        action: "stopAndTranscribeSession",
-        voiceMode: modeVoixActif,
-        lastKnownLiveText: dernierTexteLive
+        action: "transcribeAudio",
+        audioBase64,
+        mimeType: blobFinal.type || mime
       });
 
       if (rep && rep.success && rep.text) {
@@ -1012,18 +1274,19 @@ const DEBUG = false;
         afficherErreur(err);
       }
     } catch (err) {
-      if (DEBUG) console.error("[MagicVoiceScriber] Échec stopAndTranscribeSession :", err);
+      if (DEBUG) console.error("[MagicVoiceScriber] Échec transcription :", err);
       afficherErreur("SERVICE_UNAVAILABLE");
     }
   }
 
   /**
-   * Annule l'enregistrement sans insérer de texte.
+   * Annule l'enregistrement in-situ sans transcrire.
    */
-  async function annulerDictée() {
-    try {
-      await api.runtime.sendMessage({ action: "cancelAudioSession" });
-    } catch {}
+  function annulerDictée() {
+    libererAudioLocal();
+    if (api && api.runtime && typeof api.runtime.sendMessage === "function") {
+      api.runtime.sendMessage({ action: "cancelAudioSession" }).catch(() => {});
+    }
     reinitialiserApresAction();
   }
 
@@ -1031,11 +1294,17 @@ const DEBUG = false;
    * Réessaie la transcription sur le dernier audio capturé sans ré-enregistrer.
    */
   async function reessayerTranscription() {
+    if (!dernierBlobLocal || dernierBlobLocal.size < 100) {
+      afficherErreur("EMPTY_RECORDING");
+      return;
+    }
     definirEtat("THINKING");
     try {
+      const audioBase64 = await blobVersBase64Local(dernierBlobLocal);
       const rep = await api.runtime.sendMessage({
-        action: "retryLastTranscription",
-        voiceMode: modeVoixActif
+        action: "transcribeAudio",
+        audioBase64,
+        mimeType: dernierBlobLocal.type || "audio/webm"
       });
       if (rep && rep.success && rep.text) {
         insererTexteAuCurseur(rep.text);
@@ -1108,17 +1377,95 @@ const DEBUG = false;
   // 6. ÉCOUTEURS D'ÉVÉNEMENTS WEB & NAVIGATION
   // ═══════════════════════════════════════════════════════════════════════════
 
-  // Focus sur les éléments de saisie du Web
+  // Variable de contrôle pour l'écouteur Google Docs
+  let ecouteurDocsIframeAttache = false;
+
+  /**
+   * Attache le gestionnaire de raccourci clavier dans l'iframe proxy de Google Docs
+   * afin d'intercepter les frappes avant leur neutralisation par l'éditeur Docs.
+   */
+  function attacherEcouteurGoogleDocs() {
+    if (window.location.hostname !== "docs.google.com" || ecouteurDocsIframeAttache) return;
+    try {
+      const iframeProxy = document.querySelector(".docs-texteventtarget-iframe");
+      if (iframeProxy) {
+        const docIframe = iframeProxy.contentDocument || iframeProxy.contentWindow?.document;
+        const winIframe = iframeProxy.contentWindow;
+        if (docIframe) {
+          docIframe.addEventListener("keydown", gererRaccourciClavier, true);
+          if (winIframe) {
+            winIframe.addEventListener("keydown", gererRaccourciClavier, true);
+          }
+          ecouteurDocsIframeAttache = true;
+        }
+      }
+    } catch {}
+  }
+
+  /**
+   * Gestionnaire centralisé des raccourcis clavier en phase de capture (True).
+   * @param {KeyboardEvent} e
+   */
+  function gererRaccourciClavier(e) {
+    // 1. Déclenchement de la dictée :
+    // - Sur Mac : Control + Shift + S/D (sans conflit Google Docs) ou Option + Shift + S/D
+    // - Sur Windows/Linux : Alt + Shift + S/D
+    const modificateur = (e.ctrlKey || e.altKey) && e.shiftKey;
+    if (modificateur) {
+      if (e.code === "KeyS" || e.code === "KeyD") {
+        e.preventDefault();
+        e.stopPropagation();
+        dernierDeclenchementClavierMs = Date.now();
+        basculerDictéeVocale();
+        return;
+      }
+    }
+
+    // 2. Contrôles pendant la session vocale active
+    if (etatCourant === "RECORDING" || etatCourant === "PAUSED") {
+      if (e.key === "Enter" && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        arreterEtTranscrire();
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        annulerDictée();
+        return;
+      }
+    }
+  }
+
+  // Écoute des raccourcis clavier au plus haut de la chaîne d'événements (Window & Document en capture)
+  window.addEventListener("keydown", gererRaccourciClavier, true);
+  document.addEventListener("keydown", gererRaccourciClavier, true);
+
+  // Focus sur les éléments de saisie du Web (avec résilience Shadow DOM & Google Docs)
   document.addEventListener(
     "focusin",
     (e) => {
+      attacherEcouteurGoogleDocs();
       const cible = e.target;
       if (estElementEligible(cible) && !estDomaineExclu()) {
         elementCibleActif = cible;
         if (configLocale.caretGemEnabled && etatCourant === "HIDDEN") {
           definirEtat("CARET_GEM");
         }
+        return;
       }
+
+      // Repli asynchrone pour les composants à encapsulation Shadow DOM / Angular (ex: NotebookLM textarea)
+      setTimeout(() => {
+        const profond = obtenirElementActifProfond();
+        if (profond && profond !== cible && estElementEligible(profond) && !estDomaineExclu()) {
+          elementCibleActif = profond;
+          if (configLocale.caretGemEnabled && etatCourant === "HIDDEN") {
+            definirEtat("CARET_GEM");
+          }
+        }
+      }, 50);
     },
     true
   );
@@ -1139,40 +1486,6 @@ const DEBUG = false;
           }
         }
       }, 120);
-    },
-    true
-  );
-
-  // Raccourcis clavier universels (Phase de capture)
-  document.addEventListener(
-    "keydown",
-    (e) => {
-      // 1. Déclenchement de la dictée : Alt + Shift + S ou Alt + Shift + D
-      if (e.altKey && e.shiftKey) {
-        if (e.code === "KeyS" || e.code === "KeyD") {
-          e.preventDefault();
-          e.stopPropagation();
-          dernierDeclenchementClavierMs = Date.now();
-          basculerDictéeVocale();
-          return;
-        }
-      }
-
-      // 2. Contrôles pendant la session vocale active
-      if (etatCourant === "RECORDING" || etatCourant === "PAUSED") {
-        if (e.key === "Enter" && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
-          e.preventDefault();
-          e.stopPropagation();
-          arreterEtTranscrire();
-          return;
-        }
-        if (e.key === "Escape") {
-          e.preventDefault();
-          e.stopPropagation();
-          annulerDictée();
-          return;
-        }
-      }
     },
     true
   );
@@ -1239,10 +1552,8 @@ const DEBUG = false;
         configLocale.sitesExclus = Array.isArray(rep.sitesExclus) ? rep.sitesExclus : [];
         configLocale.shortcutKey = rep.shortcutKey || "KeyS";
         configLocale.provider = rep.provider || "gemini";
-        configLocale.geminiModel = rep.geminiModel || "gemini-3.5-transcribe-live";
+        configLocale.geminiModel = rep.geminiModel || "gemini-3.5-transcribe";
         fournisseurActif = configLocale.provider;
-        if (rep.activeVoiceMode) modeVoixActif = rep.activeVoiceMode;
-        actualiserAffichageModeVoix();
 
         if (estDomaineExclu()) {
           definirEtat("HIDDEN");
@@ -1259,6 +1570,10 @@ const DEBUG = false;
   if (typeof document !== "undefined" && typeof document.createElement === "function" && typeof module === "undefined") {
     creerStructureShadowDOM();
     rechargerConfiguration();
+    // Tentative d'attachement précoce de l'interception Google Docs
+    attacherEcouteurGoogleDocs();
+    setTimeout(attacherEcouteurGoogleDocs, 500);
+    setTimeout(attacherEcouteurGoogleDocs, 1500);
   }
 
   // Export pour les tests unitaires automatisés Node.js
@@ -1269,6 +1584,8 @@ const DEBUG = false;
       estDomaineExclu,
       obtenirElementActifProfond,
       calculerPositionWidget,
+      actualiserPositionCSS,
+      gererRaccourciClavier,
       definirEtat,
       configLocale
     };

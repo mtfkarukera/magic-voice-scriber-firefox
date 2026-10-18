@@ -70,8 +70,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Détection macOS pour le formatage visuel des touches
   const estMac = /Mac/i.test(navigator.userAgent || navigator.platform || "");
-  if (labelShortcutS) labelShortcutS.textContent = estMac ? "⌥ ⇧ S" : "Alt + Shift + S";
-  if (labelShortcutD) labelShortcutD.textContent = estMac ? "⌥ ⇧ D" : "Alt + Shift + D";
+  if (labelShortcutS) labelShortcutS.textContent = estMac ? "⌃ ⇧ S" : "Alt + Shift + S";
+  if (labelShortcutD) labelShortcutD.textContent = estMac ? "⌃ ⇧ D" : "Alt + Shift + D";
 
   let domaineActif = "";
   let ongletActifId = null;

@@ -212,7 +212,7 @@
     "description": "Lỗi 401/403"
   },
   "extDescription": {
-    "message": "Nhập liệu bằng giọng nói ngữ nghĩa thông minh lấy cảm hứng từ Google Rambler cho Thunderbird (Gemini, OpenAI/Mistral/Groq hoặc Ollama/Whisper cục bộ).",
+    "message": "Trải nghiệm nhập liệu bằng giọng nói mượt mà lấy cảm hứng từ các công cụ như Google Rambler hoặc Mistral Voxtral cho Firefox",
     "description": "Mô tả tiện ích mở rộng"
   },
   "extName": {
@@ -228,7 +228,7 @@
     "description": "Tùy chọn 2 mô hình Gemini"
   },
   "helpCaretGemEnabled": {
-    "message": "Theo mặc định, tiện ích mở rộng ẩn và chỉ xuất hiện khi dùng phím tắt.",
+    "message": "Hiển thị giọt màu cam kín đáo ở bên phải trường đang hoạt động. Văn bản được chèn tại đúng vị trí con trỏ của bạn.",
     "description": "Aide option Goutte Vocale au repos"
   },
   "helpGeminiApiKey": {
@@ -247,6 +247,14 @@
     "message": "Đảm bảo máy chủ Whisper cục bộ và LLM của bạn đang chạy.",
     "description": "Trợ giúp chế độ cục bộ"
   },
+  "helpMistralKey": {
+    "message": "Lấy khóa API cá nhân của bạn tại console.mistral.ai.",
+    "description": "Key helpMistralKey"
+  },
+  "helpMistralModel": {
+    "message": "Mô hình Realtime làm sạch giọng nói tự nhiên và xuất văn bản ngay lập tức.",
+    "description": "Key helpMistralModel"
+  },
   "helpOpenaiPipeline": {
     "message": "Mẹo: Nếu bạn dùng Mistral để làm sạch văn bản, hãy nhập khóa Groq hoặc OpenAI (hoặc máy chủ Whisper cục bộ) cho bước phiên âm giọng nói.",
     "description": "Mẹo quy trình 2 bước"
@@ -259,6 +267,10 @@
     "message": "Xử lý ngoại tuyến 100 % và bảo mật tuyệt đối trên máy tính của bạn qua máy chủ Whisper cục bộ và Ollama hoặc LM Studio.",
     "description": "Trợ giúp Cục bộ"
   },
+  "helpProviderMistral": {
+    "message": "Phiên âm độ trung thực cao siêu nhanh qua Voxtral Mini Realtime (WebSocket) hoặc Mini (REST).",
+    "description": "Aide pour Mistral"
+  },
   "helpProviderOpenai": {
     "message": "Kết hợp công cụ nhận dạng giọng nói nhanh (Whisper trên OpenAI hoặc Groq) với mô hình ngôn ngữ (Mistral, OpenAI, Groq) để làm sạch văn bản.",
     "description": "Trợ giúp OpenAI"
@@ -268,7 +280,7 @@
     "description": "Thanh gợi ý phím tắt"
   },
   "labelCaretGemEnabled": {
-    "message": "Hiển thị Giọt Giọng nói khi nghỉ gần con trỏ",
+    "message": "Hiển thị Giọt Thoại trong trường đang hoạt động khi nghỉ",
     "description": "Libellé option Goutte Vocale au repos"
   },
   "labelDefaultVoiceMode": {
@@ -323,6 +335,14 @@
     "message": "URL máy chủ STT cục bộ (Whisper.cpp / Speaches / Faster-Whisper)",
     "description": "Nhãn URL STT cục bộ"
   },
+  "labelMistralApiKey": {
+    "message": "Khóa API Mistral:",
+    "description": "Key labelMistralApiKey"
+  },
+  "labelMistralModel": {
+    "message": "Mô hình Voxtral:",
+    "description": "Key labelMistralModel"
+  },
   "labelOpenaiPreset": {
     "message": "Thiết lập sẵn trên Đám mây",
     "description": "Nhãn thiết lập đám mây"
@@ -356,7 +376,7 @@
     "description": "Mục menu ngữ cảnh mở cài đặt"
   },
   "micPrefRequiredMessage": {
-    "message": "Thiết lập một lần trên Thunderbird: mở Cài đặt (⌘, hoặc Công cụ > Cài đặt) → thẻ Chung (cuộn xuống dưới cùng) → nút «Trình chỉnh sửa cấu hình…», dán media.navigator.permission.disabled và đặt thành true.",
+    "message": "Quyền truy cập micrô trong Firefox: khi lời nhắc xuất hiện, hãy chọn «Ghi nhớ quyết định này» rồi nhấp vào «Cho phép».",
     "description": "Hướng dẫn bật micro một lần trong Thunderbird"
   },
   "micStatusIdle": {
@@ -408,7 +428,7 @@
     "description": "Thông báo chào mừng khi chưa có khóa API"
   },
   "optionsHeaderSubtitle": {
-    "message": "Nhập liệu giọng nói ngữ nghĩa lấy cảm hứng từ Google Rambler cho Thunderbird",
+    "message": "Trải nghiệm nhập liệu bằng giọng nói mượt mà lấy cảm hứng từ các công cụ như Google Rambler hoặc Mistral Voxtral cho Firefox",
     "description": "Phụ đề trang cài đặt"
   },
   "optionsPageTitle": {
@@ -431,6 +451,10 @@
     "message": "Để trống nếu không yêu cầu khóa",
     "description": "Gợi ý khóa cục bộ"
   },
+  "placeholderMistralApiKey": {
+    "message": "Khóa API Mistral của bạn...",
+    "description": "Key placeholderMistralApiKey"
+  },
   "policyRememberLast": {
     "message": "Ghi nhớ và giữ chế độ đã chọn lần cuối (Khuyên dùng)",
     "description": "Tùy chọn nhớ chế độ cuối"
@@ -440,11 +464,11 @@
     "description": "Tùy chọn dùng chế độ mặc định"
   },
   "popupCaretGemDesc": {
-    "message": "Hiển thị bong bóng màu cam gần con trỏ khi nghỉ",
+    "message": "Giọt cam ở bên phải trường đang hoạt động khi nghỉ",
     "description": "Description switch Goutte Vocale popup"
   },
   "popupCaretGemLabel": {
-    "message": "Giọt Giọng nói tại con trỏ",
+    "message": "Giọt Thoại trong trường",
     "description": "Switch Goutte Vocale dans popup"
   },
   "popupDomainSystem": {
@@ -476,12 +500,12 @@
     "description": "Switch activer sur ce site dans popup"
   },
   "prefGuideBody": {
-    "message": "Để cho phép WebExtensions ghi âm, mở Trình chỉnh sửa cấu hình (Cài đặt > Chung > nút «Trình chỉnh sửa cấu hình…»), tìm tùy chọn sau và đặt thành true:",
-    "description": "Nội dung hướng dẫn tùy chọn"
+    "message": "Theo tiêu chuẩn bảo mật của Firefox, quyền truy cập micrô được yêu cầu trong lần đọc chính tả đầu tiên trên mỗi trang web (ví dụ: Google Docs, Notion, webmail). Chọn « Ghi nhớ quyết định này » và nhấp vào « Cho phép » để ủy quyền vĩnh viễn cho miền đó.",
+    "description": "Nội dung hướng dẫn quyền micrô Firefox"
   },
   "prefGuideTitle": {
-    "message": "Thiết lập một lần trên Thunderbird:",
-    "description": "Tiêu đề hướng dẫn tùy chọn"
+    "message": "Quyền sử dụng micrô theo từng trang trong Firefox:",
+    "description": "Tiêu đề hướng dẫn quyền micrô Firefox"
   },
   "presetCustomCloud": {
     "message": "Tùy chỉnh (Tương thích OpenAI)",
@@ -500,7 +524,7 @@
     "description": "Thiết lập LM Studio"
   },
   "presetMistral": {
-    "message": "Mistral AI (Whisper/Groq STT + Mistral Small)",
+    "message": "Mistral AI (Voxtral Mini Realtime & Mini)",
     "description": "Thiết lập Mistral"
   },
   "presetOllama": {
@@ -512,12 +536,16 @@
     "description": "Thiết lập OpenAI"
   },
   "providerOptionGemini": {
-    "message": "Google Gemini API (Khuyên dùng — Mặc định)",
+    "message": "Google Gemini (Khuyên dùng — Chế độ SMART 1 bước)",
     "description": "Tùy chọn Gemini"
   },
   "providerOptionLocal": {
-    "message": "Mô hình 100 % Cục bộ (Ollama, LM Studio, Whisper cục bộ)",
+    "message": "Mô hình Cục bộ 100% (Whisper cục bộ trên localhost:8000)",
     "description": "Tùy chọn Cục bộ"
+  },
+  "providerOptionMistral": {
+    "message": "Mistral AI (Độ trung thực cao — Voxtral Mini Realtime & Mini)",
+    "description": "Key providerOptionMistral"
   },
   "providerOptionOpenai": {
     "message": "OpenAI / Đám mây Bên thứ ba (Mistral, Groq, OpenAI…)",
@@ -548,11 +576,11 @@
     "description": "Étape 1 web dans wizard"
   },
   "readyStep2Desc": {
-    "message": "Nhấp vào Giọt hoặc nhấn Alt+Shift+S (Mac: ⌘⇧S). Nói tự nhiên không lo ấp úng.",
+    "message": "Nhấp vào Giọt hoặc nhấn Alt+Shift+S (Mac: ⌃⇧S). Nói tự nhiên không lo ấp úng.",
     "description": "Mô tả bước 2 sử dụng"
   },
   "readyStep2DescWeb": {
-    "message": "Nhấn Alt+Shift+S (Mac: ⌥⇧S). Nói thoải mái mà không cần lo về việc ngập ngừng hay lặp từ.",
+    "message": "Nhấn Alt+Shift+S (Mac: ⌃⇧S). Nói thoải mái mà không cần lo về việc ngập ngừng hay lặp từ.",
     "description": "Description étape 2 web dans wizard"
   },
   "readyStep2Title": {
@@ -587,6 +615,10 @@
     "message": "Cấu hình Mô hình 100 % Cục bộ",
     "description": "Tiêu đề Cục bộ"
   },
+  "sectionMistralTitle": {
+    "message": "Cấu hình Mistral AI (Khuyên dùng)",
+    "description": "Key sectionMistralTitle"
+  },
   "sectionOpenaiTitle": {
     "message": "Cấu hình OpenAI / Đám mây Bên thứ ba",
     "description": "Tiêu đề OpenAI"
@@ -600,11 +632,11 @@
     "description": "Tiêu đề tùy chọn chế độ"
   },
   "sectionWebErgonomicsTitle": {
-    "message": "3. Công thái học Web & Trang web bị loại trừ",
+    "message": "2. Công thái học Web & Trang web bị loại trừ",
     "description": "Titre de section ergonomie web"
   },
   "setupHeaderSubtitle": {
-    "message": "Chuẩn bị tính năng nhập liệu bằng giọng nói thông minh trong Thunderbird chỉ với vài bước đơn giản.",
+    "message": "Chuẩn bị tính năng nhập liệu bằng giọng nói thông minh trong Firefox chỉ với vài bước đơn giản.",
     "description": "Phụ đề đầu trang"
   },
   "setupHeaderTitle": {
@@ -620,7 +652,7 @@
     "description": "Mô tả Giọt Giọng nói"
   },
   "shortcutDescWeb": {
-    "message": "(hoặc Alt + Shift + D / Giọt Giọng nói có thể cấu hình)",
+    "message": "(hoặc Alt + Shift + D / ⌃ ⇧ S trên macOS)",
     "description": "Description raccourci web dans wizard"
   },
   "shortcutLabel": {
@@ -632,15 +664,15 @@
     "description": "Texte si aucun site exclu"
   },
   "smartBadgeTitle": {
-    "message": "Công nghệ Gemini SMART Bản địa",
+    "message": "Công nghệ Voxtral & SMART Bản địa",
     "description": "Tiêu đề huy hiệu SMART"
   },
   "smartExplanationText": {
-    "message": "Với Google Gemini 3.5, giọng nói của bạn được xử lý trong một lượt siêu nhanh duy nhất. Mô hình SMART tự động loại bỏ các từ ngập ngừng ('ờ', 'ừ'), ngập ngừng và lặp lại mà không cần lời nhắc viết lại nhân tạo.",
+    "message": "Với Mistral Voxtral và Google Gemini, giọng nói của bạn được xử lý trong một lượt duy nhất siêu nhanh. Mô hình tự động loại bỏ các từ ngập ngừng («ừm», «ờ»), câu nói vấp và lặp từ mà không cần lời nhắc viết lại nhân tạo.",
     "description": "Giải thích SMART"
   },
   "snapAlertBody": {
-    "message": "Gói Snap chính thức của Thunderbird chặn quyền truy cập micrô (thiếu cổng audio-record). Để chuyển đổi an toàn sang phiên bản .deb gốc mà không bị cài lại Snap khi cập nhật hoặc mất email:",
+    "message": "Đảm bảo hệ điều hành của bạn cho phép Firefox truy cập micrô trong cài đặt hệ thống.",
     "description": "Corps alerte Snap"
   },
   "snapAlertTerminalSubtext": {
@@ -648,7 +680,7 @@
     "description": "Sous-texte commande terminal Ubuntu"
   },
   "snapAlertTitle": {
-    "message": "Lưu ý cho người dùng Ubuntu Linux (Bản Snap)",
+    "message": "Khả năng tương thích hệ thống & Quyền",
     "description": "Tiêu đề cảnh báo Snap"
   },
   "statusInserted": {
@@ -700,7 +732,7 @@
     "description": "Trạng thái xử lý AI"
   },
   "step1Desc": {
-    "message": "Kiểm tra xem Thunderbird đã được cấp quyền truy cập micro trước khi bắt đầu.",
+    "message": "Kiểm tra xem Firefox đã được cấp quyền truy cập micro trước khi bắt đầu.",
     "description": "Mô tả bước 1"
   },
   "step1Label": {

@@ -5,7 +5,7 @@
 
 ## 1. Pièges Connus & Anti-Patterns
 
-- **Capture microphone hors contexte DOM** : Ne jamais appeler `navigator.mediaDevices.getUserMedia` depuis `background.js` (Event Page MV3). L'accès au microphone doit impérativement s'effectuer dans `compose/compose.js`.
+- **Capture microphone hors contexte DOM** : Ne jamais appeler `navigator.mediaDevices.getUserMedia` depuis `background.js` (Event Page MV3). L'accès au microphone doit impérativement s'effectuer dans `content/content-injected.js` au sein de l'onglet actif.
 - **Match patterns WebExtension avec numéro de port** : Les patterns d'origine WebExtension (`browser.permissions.contains` / `request`) rejettent les numéros de port (`http://localhost:11434/*` est invalide). Toujours utiliser `http://localhost/*` ou `http://127.0.0.1/*` via `MVSProviders.obtenirPatternOrigine()`.
 - **Requêtes CORS vers `localhost`** : Ne jamais exécuter `fetch()` vers `http://localhost:11434` ou `http://localhost:8000` directement depuis un script non privilégié. Toujours faire transiter les requêtes HTTP par `background.js` via `browser.runtime.sendMessage()`.
 - **Perte du canal asynchrone `onMessage`** : L'écouteur `browser.runtime.onMessage.addListener` ne doit pas être une fonction `async` directe ; il doit appeler une promesse avec `.then(sendResponse)` et retourner `true` de façon synchrone.
@@ -47,7 +47,7 @@ npm test
 bash build.sh
 ```
 
-### Procédure de test manuel dans Thunderbird 128+ ESR
-1. Ouvrir `Outils > Modules complémentaires et thèmes > Déboguer des modules > Charger un module temporaire…` et sélectionner `manifest.json`.
-2. Ouvrir une fenêtre de rédaction de message (`Ctrl+N`) et appuyer sur `Alt+Shift+S`.
-3. Tester la pause/reprise avec la barre `Espace`, le changement de mode morphing (`Naturel` / `Professionnel` / `Synthèse`) et l'insertion à la position du curseur.
+### Procédure de test manuel dans Firefox (MV3)
+1. Ouvrir `about:debugging#/runtime/this-firefox` > `Charger un module temporaire…` et sélectionner le fichier `manifest.json`.
+2. Ouvrir n'importe quelle page web comportant des champs de saisie (ex: Notion, ChatGPT, Google Docs, textarea de test) et appuyer sur `Alt+Shift+S` (ou `Alt+Shift+D`).
+3. Tester la dictée fluide (Google Gemini SMART ou Mistral Voxtral), la pause/reprise avec la barre `Espace`, l'annulation avec `Échap`, et l'insertion instantanée (< 250 ms) avec `Entrée` ou le bouton d'insertion.

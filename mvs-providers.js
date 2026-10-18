@@ -335,11 +335,7 @@
     label: "Gemini",
     nomComplet: "Google Gemini API",
 
-    obtenirLabel(config = {}) {
-      const modele = (config.geminiModel || "gemini-3.5-transcribe-live").trim();
-      if (modele === "gemini-3.5-transcribe-live") {
-        return "Gemini Live";
-      }
+    obtenirLabel(_config = {}) {
       return "Gemini 3.5";
     },
 
@@ -490,7 +486,143 @@
     }
   };
 
-  // ── 4. FOURNISSEUR 2 : OPENAI & TIERS CLOUD (MISTRAL, GROQ, OPENAI) ────────
+  // ── 4. FOURNISSEUR 1 BIS : MISTRAL AI (PAR DÉFAUT — VOXTRAL REALTIME & MINI) ──
+
+  const FournisseurMistral = {
+    id: "mistral",
+    label: "Mistral AI",
+    nomComplet: "Mistral AI (Voxtral)",
+
+    obtenirLabel(config = {}) {
+      return "Mistral AI";
+    },
+
+    /**
+     * Sollicite un jeton éphémère de session (rt_*) pour WebSocket sécurisé client-side (anti-leak).
+     * @param {string} apiKey - Clé API maîtresse Mistral
+     * @returns {Promise<string>} Jeton de session client_secret.value
+     */
+    async obtenirSessionRealtime(apiKey) {
+      const cle = (apiKey || "").trim();
+      if (!cle) {
+        throw new Error("UNAUTHORIZED");
+      }
+      let rep;
+      try {
+        rep = await fetch("https://api.mistral.ai/v1/client/sessions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${cle}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            purpose: "realtime",
+            model: "voxtral-mini-transcribe-realtime-2602"
+          }),
+          signal: AbortSignal.timeout(TIMEOUT_REQUETE_MS)
+        });
+      } catch (err) {
+        if (err && (err.name === "TimeoutError" || err.name === "AbortError")) {
+          throw new Error("TIMEOUT");
+        }
+        throw new Error("NETWORK");
+      }
+
+      if (!rep.ok) {
+        if (rep.status === 401 || rep.status === 403) throw new Error("UNAUTHORIZED");
+        if (rep.status === 429) throw new Error("RATE_LIMITED");
+        throw new Error("SERVICE_UNAVAILABLE");
+      }
+
+      const donnees = await rep.json();
+      const rawSecret = donnees && donnees.client_secret;
+      const token = typeof rawSecret === "string" ? rawSecret : (rawSecret && rawSecret.value);
+      if (!token) {
+        throw new Error("SERVICE_UNAVAILABLE");
+      }
+      return token;
+    },
+
+    /**
+     * Retourne l'URL WebSocket officielle pour Voxtral Realtime.
+     * @param {string} [token=''] - Jeton de session optionnel pour paramètre d'URL
+     * @returns {string}
+     */
+    obtenirUrlWebSocketRealtime(token = "") {
+      const base = "wss://api.mistral.ai/v1/audio/transcriptions/realtime?model=voxtral-mini-transcribe-realtime-2602";
+      if (token) {
+        return `${base}&client_secret=${encodeURIComponent(token)}`;
+      }
+      return base;
+    },
+
+    /**
+     * Transcription en 1 passe native via POST /v1/audio/transcriptions (Voxtral Mini).
+     * @param {string} audioBase64 - Audio encodé en Base64
+     * @param {string} [mimeType='audio/webm']
+     * @param {string} [_voiceMode='natural'] - Ignoré (Voxtral nettoie nativement)
+     * @param {Object} [config={}]
+     * @returns {Promise<{success: boolean, text: string}>}
+     */
+    async transcrire(audioBase64, mimeType = "audio/webm", _voiceMode = "natural", config = {}) {
+      const apiKey = (config.mistralApiKey || config.apiKey || config.sttApiKey || config.llmApiKey || "").trim();
+      if (!apiKey) {
+        throw new Error("UNAUTHORIZED");
+      }
+
+      const octets = base64VersUint8Array(audioBase64);
+      if (!octets || octets.length === 0) {
+        throw new Error("NO_AUDIO");
+      }
+
+      const ext = obtenirExtensionAudio(mimeType);
+      const typePropre = mimeType.split(";")[0].trim() || "audio/webm";
+      const blobAudio = new Blob([octets], { type: typePropre });
+
+      const formData = new FormData();
+      formData.append("file", blobAudio, `dictation.${ext}`);
+      formData.append("model", "voxtral-mini-latest");
+      formData.append("language", "fr");
+
+      let reponse;
+      try {
+        reponse = await fetch("https://api.mistral.ai/v1/audio/transcriptions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${apiKey}`
+          },
+          body: formData,
+          signal: AbortSignal.timeout(TIMEOUT_REQUETE_MS)
+        });
+      } catch (erreur) {
+        if (erreur && (erreur.name === "TimeoutError" || erreur.name === "AbortError")) {
+          throw new Error("TIMEOUT");
+        }
+        throw new Error("NETWORK");
+      }
+
+      if (!reponse.ok) {
+        if (reponse.status === 401 || reponse.status === 403) throw new Error("UNAUTHORIZED");
+        if (reponse.status === 429) throw new Error("RATE_LIMITED");
+        throw new Error("SERVICE_UNAVAILABLE");
+      }
+
+      let donnees;
+      try {
+        donnees = await reponse.json();
+      } catch {
+        throw new Error("SERVICE_UNAVAILABLE");
+      }
+
+      const texteBrut = donnees && typeof donnees.text === "string" ? donnees.text.trim() : "";
+      return {
+        success: true,
+        text: texteBrut
+      };
+    }
+  };
+
+  // ── 4 BIS. FOURNISSEUR 2 : OPENAI & TIERS CLOUD (MISTRAL, GROQ, OPENAI) ────
 
   const PRESET_CLOUD_LABELS = {
     openai: "OpenAI",
@@ -629,6 +761,7 @@
   // ── 6. REGISTRE & GESTIONNAIRE GLOBAL MVSPROVIDERS ─────────────────────────
 
   const FOURNISSEURS = {
+    mistral: FournisseurMistral,
     gemini: FournisseurGemini,
     openai: FournisseurOpenAI,
     local: FournisseurLocal
@@ -638,6 +771,10 @@
     DEBUG,
     FOURNISSEURS,
     MODES_VOIX,
+    FournisseurMistral,
+    FournisseurGemini,
+    FournisseurOpenAI,
+    FournisseurLocal,
     construirePromptSysteme,
     nettoyerReponseLLM,
     construireEndpointChat,
@@ -650,12 +787,12 @@
 
     /**
      * Récupère un fournisseur par son identifiant avec son label dynamique.
-     * @param {string} [id='gemini'] - 'gemini', 'openai' ou 'local'
+     * @param {string} [id='mistral'] - 'mistral', 'gemini', 'openai' ou 'local'
      * @param {Object} [config={}] - Configuration active
      * @returns {Object} Instance du fournisseur
      */
     obtenirFournisseur(id = "gemini", config = {}) {
-      const fournisseur = FOURNISSEURS[id] || FournisseurGemini;
+      const fournisseur = FOURNISSEURS[id] || FOURNISSEURS.gemini || FournisseurGemini;
       if (typeof fournisseur.obtenirLabel === "function") {
         return {
           ...fournisseur,
@@ -674,6 +811,10 @@
       const provider = config.provider || "gemini";
       if (provider === "gemini") {
         return Boolean(config.geminiApiKey && config.geminiApiKey.trim().length > 0);
+      }
+      if (provider === "mistral") {
+        const cle = (config.mistralApiKey || config.apiKey || config.sttApiKey || config.llmApiKey || "").trim();
+        return cle.length > 0;
       }
       if (provider === "openai") {
         const llmOk = Boolean(config.llmApiKey && config.llmApiKey.trim().length > 0);
@@ -694,20 +835,18 @@
       if (provider === "local") {
         return Boolean(
           config.localSttUrl &&
-          config.localSttUrl.trim().length > 0 &&
-          config.localLlmUrl &&
-          config.localLlmUrl.trim().length > 0
+          config.localSttUrl.trim().length > 0
         );
       }
       return false;
     },
 
     /**
-     * Exécute la transcription et le nettoyage sémantique selon le fournisseur actif.
+     * Exécute la transcription selon le fournisseur actif.
      * @param {Object} config - Configuration active
      * @param {string} audioBase64 - Audio encodé en Base64
      * @param {string} [mimeType='audio/webm'] - Type MIME de l'enregistrement
-     * @param {string} [voiceMode='natural'] - Mode de voix ('natural', 'pro', 'bullets')
+     * @param {string} [voiceMode='natural'] - Mode de voix
      * @returns {Promise<{success: boolean, text: string}>}
      */
     async transcrire(config, audioBase64, mimeType = "audio/webm", voiceMode = "natural") {
@@ -717,7 +856,7 @@
     },
 
     /**
-     * Teste en direct la validité de la connexion au moteur configuré (depuis la page d'options).
+     * Teste en direct la validité de la connexion au moteur configuré (depuis options ou setup).
      * @param {Object} config - Configuration à tester
      * @returns {Promise<{success: boolean, message: string}>}
      */
@@ -725,6 +864,32 @@
       const provider = config.provider || "gemini";
 
       try {
+        if (provider === "mistral") {
+          const apiKey = (config.mistralApiKey || config.apiKey || config.sttApiKey || config.llmApiKey || "").trim();
+          if (!apiKey) {
+            return { success: false, message: "UNAUTHORIZED" };
+          }
+          const rep = await fetch("https://api.mistral.ai/v1/client/sessions", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${apiKey}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              purpose: "realtime",
+              model: "voxtral-mini-transcribe-realtime-2602"
+            }),
+            signal: AbortSignal.timeout(10000)
+          });
+          if (!rep.ok) {
+            if (rep.status === 401 || rep.status === 403) {
+              return { success: false, message: "UNAUTHORIZED" };
+            }
+            return { success: false, message: `HTTP ${rep.status}` };
+          }
+          return { success: true, message: "OK" };
+        }
+
         if (provider === "gemini") {
           const apiKey = (config.geminiApiKey || "").trim();
           if (!apiKey) {
@@ -763,17 +928,7 @@
         }
 
         if (provider === "local") {
-          const res = await executerNettoyageLLM({
-            texteBrut: "Euh bonjour, test local.",
-            voiceMode: "natural",
-            llmUrl: config.localLlmUrl || "http://localhost:11434",
-            llmApiKey: config.localApiKey || "",
-            llmModel: config.localLlmModel || "llama3.2"
-          });
-          if (res) {
-            return { success: true, message: "OK" };
-          }
-          return { success: false, message: "SERVICE_UNAVAILABLE" };
+          return { success: true, message: "OK" };
         }
 
         return { success: false, message: "UNKNOWN_PROVIDER" };
@@ -790,6 +945,9 @@
      * @returns {string} Pattern d'origine (ex: "https://generativelanguage.googleapis.com/*")
      */
     obtenirPatternOrigine(provider = "gemini", config = {}) {
+      if (provider === "mistral") {
+        return "https://api.mistral.ai/*";
+      }
       if (provider === "gemini") {
         return "https://generativelanguage.googleapis.com/*";
       }
@@ -807,7 +965,7 @@
       }
       if (provider === "local") {
         try {
-          const u = new URL(config.localLlmUrl || "http://localhost:11434");
+          const u = new URL(config.localLlmUrl || config.localSttUrl || "http://localhost:8000");
           return `${u.protocol}//${u.hostname}/*`;
         } catch {
           return "http://localhost/*";

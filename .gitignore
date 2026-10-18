@@ -25,3 +25,4 @@ submission_kit.md
 .claude/
 .env
 .env.*
+.web-ext-config.cjs

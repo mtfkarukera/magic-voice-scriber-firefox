@@ -212,7 +212,7 @@
     "description": "Error on 401/403"
   },
   "extDescription": {
-    "message": "Smart semantic voice dictation inspired by Google Rambler for Mozilla Firefox (Gemini, OpenAI/Mistral/Groq, Local Ollama/Whisper).",
+    "message": "A smooth voice dictation experience inspired by tools like Google Rambler or Mistral Voxtral for Firefox",
     "description": "Extension description"
   },
   "extName": {
@@ -228,7 +228,7 @@
     "description": "Option 2 in Gemini model dropdown"
   },
   "helpCaretGemEnabled": {
-    "message": "By default, the extension is stealthy and appears only upon keyboard shortcut.",
+    "message": "Displays the discreet orange gem on the right of the active field. Text is inserted at your exact cursor position.",
     "description": "Aide option Goutte Vocale au repos"
   },
   "helpGeminiApiKey": {
@@ -247,6 +247,14 @@
     "message": "Make sure your local Whisper server (e.g. faster-whisper on :8000) and LLM are running.",
     "description": "Local mode help"
   },
+  "helpMistralKey": {
+    "message": "Get your personal API key at console.mistral.ai.",
+    "description": "Key helpMistralKey"
+  },
+  "helpMistralModel": {
+    "message": "The Realtime model cleans your speech naturally and outputs text instantly.",
+    "description": "Key helpMistralModel"
+  },
   "helpOpenaiPipeline": {
     "message": "Tip: If you use Mistral for text cleanup, provide a Groq or OpenAI key (or a local Whisper URL) for the audio transcription step.",
     "description": "Tip for 2-step pipeline"
@@ -259,6 +267,10 @@
     "message": "100% offline and sovereign processing on your computer via a local Whisper server and Ollama or LM Studio.",
     "description": "Help text for Local provider"
   },
+  "helpProviderMistral": {
+    "message": "Ultra-fast high-fidelity transcription via Voxtral Mini Realtime (WebSocket) or Mini (REST).",
+    "description": "Aide pour Mistral"
+  },
   "helpProviderOpenai": {
     "message": "Combines a fast speech-to-text endpoint (Whisper on OpenAI or Groq) with a language model (Mistral, OpenAI, Groq) for semantic cleanup.",
     "description": "Help text for OpenAI/Cloud provider"
@@ -268,7 +280,7 @@
     "description": "Keyboard shortcuts helper bar"
   },
   "labelCaretGemEnabled": {
-    "message": "Show Voice Caret Gem at rest near cursor",
+    "message": "Show Voice Caret Gem in active field when idle",
     "description": "Libellé option Goutte Vocale au repos"
   },
   "labelDefaultVoiceMode": {
@@ -323,6 +335,14 @@
     "message": "Local STT Server URL (Whisper.cpp / Speaches / Faster-Whisper)",
     "description": "Label for local STT URL"
   },
+  "labelMistralApiKey": {
+    "message": "Mistral API Key:",
+    "description": "Key labelMistralApiKey"
+  },
+  "labelMistralModel": {
+    "message": "Voxtral Model:",
+    "description": "Key labelMistralModel"
+  },
   "labelOpenaiPreset": {
     "message": "Cloud Preset",
     "description": "Label for cloud preset selector"
@@ -356,7 +376,7 @@
     "description": "Context menu item to open options"
   },
   "micPrefRequiredMessage": {
-    "message": "One-time Thunderbird setup: open Settings (⌘, or Tools > Settings) → General tab (scroll all the way down) → \"Config Editor…\" button, paste media.navigator.permission.disabled and toggle it to true.",
+    "message": "Firefox microphone permission: when the prompt appears, check \"Remember this decision\" then click \"Allow\".",
     "description": "One-time helper message when Thunderbird getUserMedia hangs (Bug 2080573)"
   },
   "micStatusIdle": {
@@ -408,7 +428,7 @@
     "description": "Onboarding prompt when no API key is configured"
   },
   "optionsHeaderSubtitle": {
-    "message": "Smart semantic voice dictation inspired by Google Rambler for Thunderbird",
+    "message": "A smooth voice dictation experience inspired by tools like Google Rambler or Mistral Voxtral for Firefox",
     "description": "Options page subtitle"
   },
   "optionsPageTitle": {
@@ -431,6 +451,10 @@
     "message": "Leave empty if no key is required",
     "description": "Placeholder for optional local key"
   },
+  "placeholderMistralApiKey": {
+    "message": "Your Mistral API key...",
+    "description": "Key placeholderMistralApiKey"
+  },
   "policyRememberLast": {
     "message": "Remember and keep the last selected mode (Recommended)",
     "description": "Option to remember last voice mode"
@@ -440,11 +464,11 @@
     "description": "Option to reset to default voice mode"
   },
   "popupCaretGemDesc": {
-    "message": "Show orange bubble near cursor at rest",
+    "message": "Orange gem on the right of the active field when idle",
     "description": "Description switch Goutte Vocale popup"
   },
   "popupCaretGemLabel": {
-    "message": "Voice Caret Gem",
+    "message": "Voice Gem in field",
     "description": "Switch Goutte Vocale dans popup"
   },
   "popupDomainSystem": {
@@ -476,12 +500,12 @@
     "description": "Switch activer sur ce site dans popup"
   },
   "prefGuideBody": {
-    "message": "To allow WebExtensions to capture audio, open Config Editor (Settings > General > \"Config Editor…\" button at the bottom), search for the following preference and toggle it to true:",
-    "description": "Preference guide body"
+    "message": "In accordance with Firefox security standards, microphone access is requested upon the first dictation on each website (e.g. Google Docs, Notion, webmail). Check \"Remember this decision\" and click \"Allow\" to permanently authorize that domain.",
+    "description": "Per-site microphone preference body"
   },
   "prefGuideTitle": {
-    "message": "One-time Thunderbird configuration required:",
-    "description": "Preference guide title"
+    "message": "Per-site microphone permission in Firefox:",
+    "description": "Per-site microphone preference title"
   },
   "presetCustomCloud": {
     "message": "Custom (OpenAI-Compatible)",
@@ -500,7 +524,7 @@
     "description": "Preset LM Studio"
   },
   "presetMistral": {
-    "message": "Mistral AI (Whisper/Groq STT + Mistral Small)",
+    "message": "Mistral AI (Voxtral Mini Realtime & Mini)",
     "description": "Preset Mistral"
   },
   "presetOllama": {
@@ -512,12 +536,16 @@
     "description": "Preset OpenAI"
   },
   "providerOptionGemini": {
-    "message": "Google Gemini API (Recommended — Default)",
+    "message": "Google Gemini (Recommended — 1-pass SMART Mode)",
     "description": "Option label for Gemini"
   },
   "providerOptionLocal": {
-    "message": "100% Local Model (Ollama, LM Studio, Local Whisper)",
+    "message": "100% Local Model (Local Whisper on localhost:8000)",
     "description": "Option label for Local host"
+  },
+  "providerOptionMistral": {
+    "message": "Mistral AI (High fidelity — Voxtral Mini Realtime & Mini)",
+    "description": "Key providerOptionMistral"
   },
   "providerOptionOpenai": {
     "message": "OpenAI / Cloud Providers (Mistral, Groq, OpenAI…)",
@@ -548,11 +576,11 @@
     "description": "Étape 1 web dans wizard"
   },
   "readyStep2Desc": {
-    "message": "Click the Gem or press Alt+Shift+S (Mac: ⌘⇧S). Speak freely without worrying about hesitations.",
+    "message": "Click the Gem or press Alt+Shift+S (Mac: ⌃⇧S). Speak freely without worrying about hesitations.",
     "description": "Ready step 2 desc"
   },
   "readyStep2DescWeb": {
-    "message": "Press Alt+Shift+S (Mac: ⌥⇧S). Speak freely without worrying about hesitations or repetitions.",
+    "message": "Press Alt+Shift+S (Mac: ⌃⇧S). Speak freely without worrying about hesitations or repetitions.",
     "description": "Description étape 2 web dans wizard"
   },
   "readyStep2Title": {
@@ -587,6 +615,10 @@
     "message": "100% Local Model Configuration",
     "description": "Heading for Local settings"
   },
+  "sectionMistralTitle": {
+    "message": "Mistral AI Configuration (Recommended)",
+    "description": "Key sectionMistralTitle"
+  },
   "sectionOpenaiTitle": {
     "message": "OpenAI / Third-Party Cloud Configuration",
     "description": "Heading for OpenAI/Cloud settings"
@@ -600,11 +632,11 @@
     "description": "Heading for voice mode preferences"
   },
   "sectionWebErgonomicsTitle": {
-    "message": "3. Web Ergonomics & Excluded Sites",
+    "message": "2. Web Ergonomics & Excluded Sites",
     "description": "Titre de section ergonomie web"
   },
   "setupHeaderSubtitle": {
-    "message": "Get ready for intelligent semantic voice dictation in Thunderbird in a few simple steps.",
+    "message": "Get ready for intelligent semantic voice dictation in Firefox in a few simple steps.",
     "description": "Subtitle for setup wizard header"
   },
   "setupHeaderTitle": {
@@ -620,7 +652,7 @@
     "description": "Smart Voice Gem description"
   },
   "shortcutDescWeb": {
-    "message": "(or Alt + Shift + D / configurable Voice Caret Gem at rest)",
+    "message": "(or Alt + Shift + D / ⌃ ⇧ S on macOS)",
     "description": "Description raccourci web dans wizard"
   },
   "shortcutLabel": {
@@ -632,15 +664,15 @@
     "description": "Texte si aucun site exclu"
   },
   "smartBadgeTitle": {
-    "message": "Native Gemini SMART Technology",
+    "message": "Native Voxtral & SMART Technology",
     "description": "SMART badge title"
   },
   "smartExplanationText": {
-    "message": "With Google Gemini 3.5, your voice is processed in a single ultra-fast pass. The SMART model automatically removes hesitations ('um', 'uh'), false starts, and repetitions without needing artificial reformulation prompts.",
+    "message": "With Mistral Voxtral and Google Gemini, your speech is processed in a single blazing-fast pass. The model naturally removes hesitations (\"um\", \"uh\"), false starts, and repetitions without needing artificial reformulation prompts.",
     "description": "SMART explanation"
   },
   "snapAlertBody": {
-    "message": "The official Thunderbird Snap package blocks microphone access (missing audio-record plug). To migrate cleanly to the native .deb version without Snap reinstallation upon updates or risking email loss:",
+    "message": "Ensure your operating system allows Firefox to access the microphone in your system settings.",
     "description": "Corps alerte Snap"
   },
   "snapAlertTerminalSubtext": {
@@ -648,7 +680,7 @@
     "description": "Sous-texte commande terminal Ubuntu"
   },
   "snapAlertTitle": {
-    "message": "Attention Ubuntu Linux Users (Snap Package)",
+    "message": "System Compatibility & Permissions",
     "description": "Snap alert title"
   },
   "statusInserted": {
@@ -700,7 +732,7 @@
     "description": "AI inference thinking state"
   },
   "step1Desc": {
-    "message": "Check that Thunderbird has permission to access your microphone hardware before starting.",
+    "message": "Check that Firefox has permission to access your microphone hardware before starting.",
     "description": "Step 1 description"
   },
   "step1Label": {

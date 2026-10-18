@@ -48,11 +48,11 @@
         <div class="mvs-field">
           <label for="select-provider" data-i18n="labelSelectProvider">Moteur actif :</label>
           <select id="select-provider" class="mvs-select">
-            <option value="gemini" data-i18n="providerOptionGemini">Google Gemini (Recommandé — Rapide, gratuit & streaming Live)</option>
-            <option value="openai" data-i18n="providerOptionOpenai">OpenAI &amp; Tiers Cloud (Mistral, Groq, OpenAI)</option>
-            <option value="local" data-i18n="providerOptionLocal">100 % Local &amp; Souverain (Whisper local + Ollama / LM Studio)</option>
+            <option value="gemini" data-i18n="providerOptionGemini" selected>Google Gemini (Recommandé — Gemini 3.5 Transcribe Live &amp; SMART)</option>
+            <option value="mistral" data-i18n="providerOptionMistral">Mistral AI (Haute fidélité — Voxtral Mini Realtime &amp; Mini)</option>
+            <option value="local" data-i18n="providerOptionLocal">Modèle 100 % Local (Whisper local sur localhost:8000)</option>
           </select>
-          <p id="help-provider" class="mvs-help" data-i18n="helpProviderGemini">Idéal pour démarrer sans rien installer : streaming temps réel ultra-rapide et gratuit via Google AI Studio.</p>
+          <p id="help-provider" class="mvs-help" data-i18n="helpProviderGemini">Moteur champion : streaming ultra-rapide et filtrage sémantique des hésitations en 1 seule passe.</p>
         </div>
 
         <!-- ── SOUS-SECTION 1A : GOOGLE GEMINI (DÉFAUT) ── -->
@@ -67,152 +67,45 @@
             </div>
             <p class="mvs-help" data-i18n="helpGeminiApiKey">Obtenez votre clé gratuite en 30 secondes sur https://aistudio.google.com/app/apikey</p>
           </div>
+        </div>
+
+        <!-- ── SOUS-SECTION 1B : MISTRAL AI ── -->
+        <div id="section-mistral" class="mvs-provider-panel mvs-hidden">
+          <h3 class="mvs-panel-title" data-i18n="sectionMistralTitle">Configuration Mistral AI</h3>
 
           <div class="mvs-field">
-            <label for="gemini-model" data-i18n="labelGeminiModel">Modèle Gemini :</label>
-            <select id="gemini-model" class="mvs-select">
-              <option value="gemini-3.5-transcribe-live" data-i18n="geminiModelLive">gemini-3.5-transcribe-live (WebSocket streaming temps réel v1beta — Par défaut)</option>
-              <option value="gemini-3.5-transcribe" data-i18n="geminiModelBatch">gemini-3.5-transcribe (REST HTTP différé)</option>
-            </select>
-            <p class="mvs-help" data-i18n="helpGeminiModel">Le modèle Live affiche les mots au fil de votre voix et offre une latence quasi-nulle.</p>
+            <label for="mistral-api-key" data-i18n="labelMistralApiKey">Clé API Mistral AI :</label>
+            <div class="mvs-input-group">
+              <input type="password" id="mistral-api-key" class="mvs-input" autocomplete="off" data-i18n-placeholder="placeholderMistralApiKey" placeholder="Collez votre clé API Mistral...">
+              <button type="button" id="btn-toggle-mistral-key" class="mvs-btn-icon" data-i18n-title="btnToggleKeyTitle" data-i18n-aria-label="btnToggleKeyTitle" title="Afficher / Masquer la clé API" aria-label="Afficher / Masquer la clé API">👁</button>
+            </div>
+            <p class="mvs-help" data-i18n="helpMistralKey">Obtenez votre clé sur console.mistral.ai</p>
           </div>
         </div>
 
-        <!-- ── SOUS-SECTION 1B : OPENAI & TIERS CLOUD (MISTRAL, GROQ, OPENAI) ── -->
-        <div id="section-openai" class="mvs-provider-panel mvs-hidden">
-          <h3 class="mvs-panel-title" data-i18n="sectionOpenaiTitle">Configuration OpenAI &amp; Tiers Cloud</h3>
-
-          <div class="mvs-field">
-            <label for="openai-preset" data-i18n="labelOpenaiPreset">Service Cloud :</label>
-            <select id="openai-preset" class="mvs-select">
-              <option value="openai" data-i18n="presetOpenai">OpenAI (Whisper-1 + GPT-4o-mini)</option>
-              <option value="groq" data-i18n="presetGroq">Groq (Whisper-large-v3-turbo ultra-rapide)</option>
-              <option value="mistral" data-i18n="presetMistral">Mistral AI (Whisper Groq + Mistral Small)</option>
-              <option value="custom" data-i18n="presetCustomCloud">Service Cloud personnalisé compatible OpenAI</option>
-            </select>
-            <p class="mvs-help" data-i18n="helpOpenaiPipeline">Architecture en 2 étapes : transcription audio brute (STT) puis nettoyage sémantique par LLM.</p>
-          </div>
-
-          <div class="mvs-grid-2">
-            <div class="mvs-field">
-              <label for="stt-base-url" data-i18n="labelSttEndpoint">URL de base du service STT (Whisper)</label>
-              <input type="url" id="stt-base-url" class="mvs-input">
-            </div>
-            <div class="mvs-field">
-              <label for="stt-model" data-i18n="labelSttModel">Nom du modèle STT</label>
-              <input type="text" id="stt-model" class="mvs-input">
-            </div>
-          </div>
-
-          <div class="mvs-field">
-            <label for="stt-api-key" data-i18n="labelSttApiKey">Clé API du service STT</label>
-            <div class="mvs-input-group">
-              <input type="password" id="stt-api-key" class="mvs-input" autocomplete="off">
-              <button type="button" id="btn-toggle-stt-key" class="mvs-btn-icon" data-i18n-title="btnToggleKeyTitle" data-i18n-aria-label="btnToggleKeyTitle" title="Afficher / Masquer la clé API" aria-label="Afficher / Masquer la clé API">👁</button>
-            </div>
-          </div>
-
-          <hr class="mvs-divider">
-
-          <div class="mvs-grid-2">
-            <div class="mvs-field">
-              <label for="llm-base-url" data-i18n="labelLlmEndpoint">URL de base du service LLM (Chat/Completions)</label>
-              <input type="url" id="llm-base-url" class="mvs-input">
-            </div>
-            <div class="mvs-field">
-              <label for="llm-model" data-i18n="labelLlmModel">Nom du modèle LLM</label>
-              <input type="text" id="llm-model" class="mvs-input">
-            </div>
-          </div>
-
-          <div class="mvs-field">
-            <label for="llm-api-key" data-i18n="labelLlmApiKey">Clé API du service LLM</label>
-            <div class="mvs-input-group">
-              <input type="password" id="llm-api-key" class="mvs-input" autocomplete="off">
-              <button type="button" id="btn-toggle-llm-key" class="mvs-btn-icon" data-i18n-title="btnToggleKeyTitle" data-i18n-aria-label="btnToggleKeyTitle" title="Afficher / Masquer la clé API" aria-label="Afficher / Masquer la clé API">👁</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- ── SOUS-SECTION 1C : MODÈLE 100 % LOCAL (OLLAMA / LM STUDIO / WHISPER) ── -->
+        <!-- ── SOUS-SECTION 1C : MODÈLE 100 % LOCAL (WHISPER) ── -->
         <div id="section-local" class="mvs-provider-panel mvs-hidden">
           <h3 class="mvs-panel-title" data-i18n="sectionLocalTitle">Configuration Modèle 100 % Local &amp; Souverain</h3>
 
           <div class="mvs-grid-2">
             <div class="mvs-field">
               <label for="local-stt-url" data-i18n="labelLocalSttUrl">URL du serveur STT local (Whisper)</label>
-              <input type="url" id="local-stt-url" class="mvs-input">
+              <input type="url" id="local-stt-url" class="mvs-input" value="http://localhost:8000">
             </div>
             <div class="mvs-field">
               <label for="local-stt-model" data-i18n="labelLocalSttModel">Nom du modèle STT local</label>
-              <input type="text" id="local-stt-model" class="mvs-input">
-            </div>
-          </div>
-
-          <hr class="mvs-divider">
-
-          <div class="mvs-field">
-            <label for="local-llm-preset" data-i18n="labelLocalLlmPreset">Serveur LLM local</label>
-            <select id="local-llm-preset" class="mvs-select">
-              <option value="ollama" data-i18n="presetOllama">Ollama (http://localhost:11434)</option>
-              <option value="lmstudio" data-i18n="presetLmStudio">LM Studio (http://localhost:1234)</option>
-              <option value="custom" data-i18n="presetCustomLocal">Serveur local personnalisé</option>
-            </select>
-          </div>
-
-          <div class="mvs-grid-2">
-            <div class="mvs-field">
-              <label for="local-llm-url" data-i18n="labelLocalLlmUrl">URL de base du serveur LLM local</label>
-              <input type="url" id="local-llm-url" class="mvs-input">
-            </div>
-            <div class="mvs-field">
-              <label for="local-llm-model" data-i18n="labelLocalLlmModel">Modèle LLM local (ex: llama3.2, qwen2.5, mistral)</label>
-              <input type="text" id="local-llm-model" class="mvs-input">
-            </div>
-          </div>
-
-          <div class="mvs-field">
-            <label for="local-api-key" data-i18n="labelLocalApiKey">Clé API locale (optionnelle)</label>
-            <div class="mvs-input-group">
-              <input type="password" id="local-api-key" class="mvs-input" autocomplete="off" data-i18n-placeholder="placeholderLocalApiKey" placeholder="Laisser vide si aucune clé n'est requise">
-              <button type="button" id="btn-toggle-local-key" class="mvs-btn-icon" data-i18n-title="btnToggleKeyTitle" data-i18n-aria-label="btnToggleKeyTitle" title="Afficher / Masquer la clé API" aria-label="Afficher / Masquer la clé API">👁</button>
+              <input type="text" id="local-stt-model" class="mvs-input" value="whisper-1">
             </div>
           </div>
         </div>
       </section>
 
       <!-- ══════════════════════════════════════════════════════════════════ -->
-      <!-- SECTION 2 : PRÉFÉRENCES DU MODE DE DICTÉE (HORS GEMINI)           -->
-      <!-- ══════════════════════════════════════════════════════════════════ -->
-      <section id="section-voice-mode" class="mvs-card mvs-hidden">
-        <div class="mvs-card-header">
-          <h2 data-i18n="sectionVoiceModeTitle">2. Préférences du Mode de Dictée</h2>
-        </div>
-
-        <div class="mvs-field">
-          <label for="voice-mode-policy" data-i18n="labelVoiceModePolicy">Comportement à l'ouverture de la capsule</label>
-          <select id="voice-mode-policy" class="mvs-select">
-            <option value="remember" data-i18n="policyRememberLast">Conserver le dernier choix effectué (Recommandé)</option>
-            <option value="default" data-i18n="policyUseDefault">Toujours revenir au mode par défaut défini ci-dessous</option>
-          </select>
-        </div>
-
-        <div class="mvs-field" id="field-default-voice-mode">
-          <label for="default-voice-mode" data-i18n="labelDefaultVoiceMode">Mode par défaut</label>
-          <select id="default-voice-mode" class="mvs-select">
-            <option value="natural" data-i18n="modeNaturalLabel">🎙️ Rambler (Naturel &amp; Fidèle)</option>
-            <option value="pro" data-i18n="modeProLabel">👔 Professionnel (Soigné &amp; Formel)</option>
-            <option value="bullets" data-i18n="modeBulletsLabel">📋 Synthèse / Puces</option>
-          </select>
-        </div>
-      </section>
-
-      <!-- ══════════════════════════════════════════════════════════════════ -->
-      <!-- SECTION 3 : ERGONOMIE WEB & EXCLUSIONS                            -->
+      <!-- SECTION 2 : ERGONOMIE WEB & EXCLUSIONS                            -->
       <!-- ══════════════════════════════════════════════════════════════════ -->
       <section class="mvs-card">
         <div class="mvs-card-header">
-          <h2 data-i18n="sectionWebErgonomicsTitle">3. Ergonomie Web &amp; Sites Exclus</h2>
+          <h2 data-i18n="sectionWebErgonomicsTitle">2. Ergonomie Web &amp; Sites Exclus</h2>
         </div>
 
         <div class="mvs-field mvs-switch-field">

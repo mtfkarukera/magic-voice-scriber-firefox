@@ -1,21 +1,25 @@
 # Magic Voice Scriber for Firefox
 
-**Dictée vocale sémantique et intelligente inspirée de Google Rambler pour Mozilla Firefox.**
+**Une expérience de dictée fluide inspirée d'outils comme Google Rambler ou Mistral Voxtral pour Mozilla Firefox.**
 
-**Magic Voice Scriber** transforme votre voix en textes clairs, fluides et parfaitement ponctués directement dans n'importe quel champ de saisie du Web (formulaires, éditeurs de texte riches, Google Docs, Notion, webmails, réseaux sociaux). Contrairement aux outils classiques de reconnaissance vocale, il élimine automatiquement les hésitations (« euh », « ben »), résout vos auto-corrections orales à la volée et structure votre pensée en paragraphes ou en listes à puces à la position de votre curseur.
+**Magic Voice Scriber** transforme votre voix en textes clairs, fluides et parfaitement ponctués directement dans n'importe quel champ de saisie du Web (formulaires, éditeurs de texte riches, Google Docs, Notion, webmails, réseaux sociaux). Inspiré d'outils comme Google Rambler et Mistral Voxtral, vos hésitations (« euh », « ben »), faux départs et répétitions sont gommés naturellement dès la transcription en une seule passe ultra-rapide (< 250 ms), sans latence ni reformulation artificielle.
 
 ---
 
 ## ✨ Fonctionnalités Principales
 
-- 🎙️ **Dictée Sémantique Style Rambler** : Suppression intelligente des bafouillements, faux départs et répétitions.
-- 🌊 **Capsule Glassmorphism Flottante** : Visualisation sonore en temps réel avec 5 barres réactives (`AudioContext` + `AnalyserNode`) animées sous votre curseur.
-- ⌨️ **Raccourcis Clavier Rapides** :
-  - `Alt+Shift+S` : Démarre / Arrête la dictée.
-  - `Espace` : Met en pause ou reprend l'enregistrement.
+- 🎙️ **Dictée Sémantique Fluide** : Élimination naturelle et immédiate des bafouillements, faux départs et tics de langage dès la capture audio en Push-to-Talk 1 passe ultra-rapide (< 250 ms).
+- ⚡ **Trio de Moteurs Épuré (BYOK)** :
+  - **Google Gemini (Par défaut & Recommandé)** : Modèle natif Gemini 3.5 Transcribe en mode SMART 1-passe (filtrage sémantique immédiat des hésitations et bafouillements).
+  - **Mistral AI (Haute fidélité)** : Transcription mot-à-mot ultra-précise via Voxtral Mini (`voxtral-mini-latest`).
+  - **100 % Local & Gratuit** : Serveur Whisper local (ex: Faster-Whisper sur `http://localhost:8000`) pour une confidentialité absolue hors-ligne.
+- 🌊 **Capsule Glassmorphism Déplaçable & Goutte Vocale Ergonomique** : Visualisation sonore réactive en direct à 60 FPS avec 5 barres d'ondes. Capsule flottante librement déplaçable à la souris (mémorisation de sa position durant la dictée). Goutte Vocale contextuelle intégrée discrètement à droite du champ actif (calage haut-droit sur textareas et éditeurs, centrage vertical sur inputs mono-lignes, et calage en bas à droite sur Google Docs pour ne pas masquer le bouton natif Gemini).
+- ⌨️ **Raccourcis Clavier & Stratégie Keyboard-First** :
+  - `Control+Shift+S` (`⌃ ⇧ S` sur macOS) ou `Alt+Shift+S` (Windows/Linux) : Déclenchement instantané de la dictée au plus haut de la chaîne d'événements, avec liaison directe à l'iframe de saisie de Google Docs.
+  - `Espace` : Met en pause ou reprend l'écoute.
+  - `Entrée` : Valide et insère le texte propre immédiatement au curseur.
   - `Échap` : Annule immédiatement la prise de parole sans rien insérer.
-- 🎭 **3 Modes de Voix Morphing** : *Naturel*, *Professionnel* et *Synthèse / Puces*.
-- 🔌 **Architecture Multi-Moteurs Ouverte (BYOK)** : Google Gemini (REST / Live Streaming), OpenAI, Mistral, Groq, et Modèles Locaux Souverains (Whisper local + Ollama / LM Studio).
+- 🛡️ **Ergonomie Web & Sécurité** : Liste noire de domaines (désactivation en 1 clic sur les sites sensibles), exclusion stricte des champs mot de passe (`type="password"`) et respect du `Ctrl+Z` natif.
 - 🌍 **Interface Multilingue (6 langues)** : Français, Anglais, Espagnol, Portugais, Allemand, Vietnamien.
 
 ---

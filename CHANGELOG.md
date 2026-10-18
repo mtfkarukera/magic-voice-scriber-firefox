@@ -5,6 +5,29 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
 
 ---
 
+## [1.1.0] - 2026-10-18
+
+### Perfectionnement Ergonomique, Google Docs & Stratégie Keyboard-First (Phase 8)
+- **Stratégie Keyboard-First & Interception Google Docs** :
+  - Écoute des raccourcis clavier (`⌃ ⇧ S` sur Mac, `Alt + Shift + S` sous Windows/Linux) au plus haut de la chaîne d'événements (`window.addEventListener("keydown", ..., true)`).
+  - Liaison dynamique des écouteurs à l'iframe proxy `.docs-texteventtarget-iframe` de Google Docs, garantissant un déclenchement instantané de la dictée même lorsque le traitement de texte capture le focus.
+- **Dégagement de l'Icône Gemini Docs** :
+  - Repositionnement de la capsule et de la goutte en bas à droite du viewport (`right: 28px; bottom: 28px`) sur `docs.google.com`, libérant totalement le bouton natif Gemini centré au bas de l'écran.
+- **Pilule Vocale Déplaçable (Draggable Vanilla JS)** :
+  - Possibilité de déplacer la capsule d'enregistrement à la souris par simple glisser-déposer sur n'importe quelle zone de l'écran, avec conservation de la position choisie tout au long de la session de dictée active.
+- **Résilience du Focus pour Conteneurs Angular Material (NotebookLM)** :
+  - Mécanisme de repli asynchrone à 50 ms via `obtenirElementActifProfond()` dans l'écouteur `focusin`, garantissant la détection immédiate des zones de texte `<textarea>` encapsulées dans le Shadow DOM.
+- **Pédagogie Factualisée de la Permission Microphone par Site** :
+  - Révision des libellés du guide d'accueil dans les 6 langues (`_locales/*/messages.json`) : explication claire et factuelle du modèle de sécurité Gecko qui sollicite l'accès au micro par origine de domaine lors du premier usage.
+- **Épuration Radicale du Live & Champion Google Gemini (Phase 7)** :
+  - Modèle Push-to-Talk 1-passe ultra-rapide (< 250 ms) avec Google Gemini (`gemini-3.5-transcribe` SMART) par défaut et Mistral Voxtral (`voxtral-mini-latest`) verbatim.
+  - Positionnement adaptatif de la Goutte Vocale dans le coin supérieur droit des textareas et éditeurs multi-lignes.
+- **Conformité & Suite de Tests** :
+  - 28 tests unitaires validés à 100 % (`npm test`), incluant le positionnement spécifique Google Docs et la gestion des raccourcis clavier.
+  - 0 erreur, 0 avertissement sur `npx web-ext lint`.
+
+---
+
 ## [1.0.0] - 2026-10-17
 
 ### Lancement Officiel — Version Firefox Manifest V3

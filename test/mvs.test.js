@@ -59,6 +59,10 @@ describe("1. MVSProviders — Utilitaires & Modes de Voix", () => {
 
   it("calcule des patterns d'origine WebExtension valides sans numéro de port", () => {
     assert.equal(
+      MVSProviders.obtenirPatternOrigine("mistral"),
+      "https://api.mistral.ai/*"
+    );
+    assert.equal(
       MVSProviders.obtenirPatternOrigine("gemini"),
       "https://generativelanguage.googleapis.com/*"
     );
@@ -70,6 +74,17 @@ describe("1. MVSProviders — Utilitaires & Modes de Voix", () => {
       MVSProviders.obtenirPatternOrigine("local", { localLlmUrl: "http://localhost:11434" }),
       "http://localhost/*"
     );
+  });
+
+  it("valide estConfigure pour le Trio (Gemini par défaut, Mistral, Local)", () => {
+    assert.equal(MVSProviders.estConfigure({ geminiApiKey: "AIzaKey" }), true);
+    assert.equal(MVSProviders.estConfigure({}), false);
+    assert.equal(MVSProviders.estConfigure({ provider: "gemini", geminiApiKey: "AIzaKey" }), true);
+    assert.equal(MVSProviders.estConfigure({ provider: "gemini", geminiApiKey: "" }), false);
+    assert.equal(MVSProviders.estConfigure({ provider: "mistral", mistralApiKey: "key" }), true);
+    assert.equal(MVSProviders.estConfigure({ provider: "mistral", mistralApiKey: "" }), false);
+    assert.equal(MVSProviders.estConfigure({ provider: "local", localSttUrl: "http://localhost:8000" }), true);
+    assert.equal(MVSProviders.estConfigure({ provider: "local", localSttUrl: "" }), false);
   });
 
   it("construit la configuration WebSocket Gemini 3.5 Transcribe Live (v1beta) en mode SMART sans systemInstruction", () => {
@@ -416,10 +431,69 @@ describe("2. MVSProviders — Pipelines Gemini, OpenAI/Mistral & Local (Mock Fet
     }
   });
 
-  it("valide la méthode testerConnexion pour Gemini, OpenAI et Local", async () => {
+  it("exécute le pipeline Mistral Voxtral (obtention de session realtime et transcription REST)", async () => {
     const fetchOriginal = globalThis.fetch;
 
     globalThis.fetch = async (url) => {
+      if (url.includes("/v1/client/sessions")) {
+        return {
+          ok: true,
+          status: 200,
+          async json() {
+            return {
+              client_secret: "rt_test_token_123",
+              purpose: "realtime"
+            };
+          }
+        };
+      }
+      if (url.includes("/v1/audio/transcriptions")) {
+        return {
+          ok: true,
+          status: 200,
+          async json() {
+            return {
+              text: "Bonjour, ceci est une dictée Mistral Voxtral."
+            };
+          }
+        };
+      }
+      return { ok: false, status: 404 };
+    };
+
+    try {
+      const token = await MVSProviders.FournisseurMistral.obtenirSessionRealtime("CLE_MISTRAL");
+      assert.equal(token, "rt_test_token_123");
+
+      // 2. URL WebSocket
+      const wsUrl = MVSProviders.FournisseurMistral.obtenirUrlWebSocketRealtime("rt_test_token_123");
+      assert.ok(wsUrl.includes("wss://api.mistral.ai/v1/audio/transcriptions/realtime"));
+      assert.ok(wsUrl.includes("client_secret=rt_test_token_123"));
+
+      // 3. Transcription REST
+      const res = await MVSProviders.transcrire(
+        {
+          provider: "mistral",
+          mistralApiKey: "CLE_MISTRAL"
+        },
+        "UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=",
+        "audio/wav",
+        "natural"
+      );
+      assert.equal(res.success, true);
+      assert.equal(res.text, "Bonjour, ceci est une dictée Mistral Voxtral.");
+    } finally {
+      globalThis.fetch = fetchOriginal;
+    }
+  });
+
+  it("valide la méthode testerConnexion pour Mistral, Gemini, OpenAI et Local", async () => {
+    const fetchOriginal = globalThis.fetch;
+
+    globalThis.fetch = async (url) => {
+      if (url.includes("api.mistral.ai")) {
+        return { ok: true, status: 200, async json() { return { client_secret: "rt_123" }; } };
+      }
       if (url.includes("googleapis.com")) {
         return { ok: true, status: 200, async json() { return { models: [] }; } };
       }
@@ -436,6 +510,12 @@ describe("2. MVSProviders — Pipelines Gemini, OpenAI/Mistral & Local (Mock Fet
     };
 
     try {
+      const resMistral = await MVSProviders.testerConnexion({
+        provider: "mistral",
+        mistralApiKey: "mis_test_key"
+      });
+      assert.equal(resMistral.success, true);
+
       const resGemini = await MVSProviders.testerConnexion({
         provider: "gemini",
         geminiApiKey: "AIzaTestKey"
@@ -450,6 +530,12 @@ describe("2. MVSProviders — Pipelines Gemini, OpenAI/Mistral & Local (Mock Fet
         sttBaseUrl: "https://api.openai.com"
       });
       assert.equal(resOpenai.success, true);
+
+      const resLocal = await MVSProviders.testerConnexion({
+        provider: "local",
+        localSttUrl: "http://localhost:8000"
+      });
+      assert.equal(resLocal.success, true);
     } finally {
       globalThis.fetch = fetchOriginal;
     }
@@ -698,6 +784,118 @@ describe("5. Injection Universelle, Éligibilité des Champs & Résilience Clavi
 
     globalThis.window.location.hostname = "autorise.com";
     assert.equal(contentModule.estDomaineExclu(), false);
+  });
+
+  it("calcule la position ergonomique de la Goutte Vocale (haut-droit sur textarea, centré sur input)", () => {
+    // Champ multi-lignes (textarea: height = 120 >= 50)
+    const mockTextarea = new MockHTMLElement("textarea");
+    mockTextarea.getBoundingClientRect = () => ({
+      top: 100,
+      bottom: 220,
+      left: 200,
+      right: 600,
+      width: 400,
+      height: 120
+    });
+
+    const posMulti = contentModule.calculerPositionWidget(mockTextarea, "CARET_GEM");
+    assert.equal(posMulti.y, 110);
+    assert.equal(posMulti.x, 572);
+
+    // Champ mono-ligne (input: height = 32 < 50)
+    const mockInput = new MockHTMLElement("input");
+    mockInput.getBoundingClientRect = () => ({
+      top: 100,
+      bottom: 132,
+      left: 200,
+      right: 600,
+      width: 400,
+      height: 32
+    });
+
+    const posMono = contentModule.calculerPositionWidget(mockInput, "CARET_GEM");
+    assert.equal(posMono.y, 107);
+    assert.equal(posMono.x, 572);
+  });
+
+  it("cale la capsule et la goutte en bas à droite sur Google Docs (évite l'icône Gemini Docs)", () => {
+    const docOriginal = globalThis.window.location.hostname;
+    try {
+      globalThis.window.location.hostname = "docs.google.com";
+
+      // Capsule sonore déployée (état RECORDING)
+      const posCapsule = contentModule.calculerPositionWidget(null, "RECORDING");
+      assert.equal(posCapsule.isCenter, false);
+      assert.equal(posCapsule.x, 1024 - 260 - 28); // 736
+      assert.equal(posCapsule.y, 768 - 56 - 28);   // 684
+
+      // Goutte vocale (état CARET_GEM)
+      const posGoutte = contentModule.calculerPositionWidget(null, "CARET_GEM");
+      assert.equal(posGoutte.isCenter, false);
+      assert.equal(posGoutte.x, 1024 - 36 - 28);  // 960
+      assert.equal(posGoutte.y, 768 - 36 - 28);   // 704
+    } finally {
+      globalThis.window.location.hostname = docOriginal;
+    }
+  });
+
+  it("intercepte et stoppe la propagation des raccourcis clavier Control+Shift+S et Alt+Shift+S", () => {
+    let preventDefaultAppele = false;
+    let stopPropagationAppele = false;
+
+    const eventMac = {
+      ctrlKey: true,
+      shiftKey: true,
+      code: "KeyS",
+      preventDefault() { preventDefaultAppele = true; },
+      stopPropagation() { stopPropagationAppele = true; }
+    };
+
+    contentModule.gererRaccourciClavier(eventMac);
+    assert.equal(preventDefaultAppele, true);
+    assert.equal(stopPropagationAppele, true);
+
+    preventDefaultAppele = false;
+    stopPropagationAppele = false;
+    const eventWin = {
+      altKey: true,
+      shiftKey: true,
+      code: "KeyD",
+      preventDefault() { preventDefaultAppele = true; },
+      stopPropagation() { stopPropagationAppele = true; }
+    };
+
+    contentModule.gererRaccourciClavier(eventWin);
+    assert.equal(preventDefaultAppele, true);
+    assert.equal(stopPropagationAppele, true);
+  });
+
+  it("intercepte les touches Entrée et Échap pendant la session vocale active", () => {
+    let preventDefaultAppele = false;
+    let stopPropagationAppele = false;
+
+    const eventEchap = {
+      key: "Escape",
+      shiftKey: false,
+      ctrlKey: false,
+      metaKey: false,
+      altKey: false,
+      preventDefault() { preventDefaultAppele = true; },
+      stopPropagation() { stopPropagationAppele = true; }
+    };
+
+    // Hors session active, Escape ne doit pas être intercepté
+    contentModule.definirEtat("HIDDEN");
+    contentModule.gererRaccourciClavier(eventEchap);
+    assert.equal(preventDefaultAppele, false);
+
+    // En session active, Escape doit être intercepté
+    contentModule.definirEtat("RECORDING");
+    contentModule.gererRaccourciClavier(eventEchap);
+    assert.equal(preventDefaultAppele, true);
+    assert.equal(stopPropagationAppele, true);
+
+    contentModule.definirEtat("HIDDEN");
   });
 
   // Nettoyage de l'environnement global simulé

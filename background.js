@@ -27,29 +27,24 @@ const api = globalThis.browser || globalThis.messenger;
 // ═══════════════════════════════════════════════════════════════════════════
 
 const CONFIG_DEFAUT = {
-  // Fournisseur actif par défaut : Google Gemini
+  // Fournisseur actif par défaut : Google Gemini (Mode SMART)
   provider: "gemini",
 
-  // 1. Paramètres Google Gemini (gemini-3.5-transcribe-live par défaut)
+  // 1. Paramètres Google Gemini (Par défaut & Recommandé)
   geminiApiKey: "",
-  geminiModel: "gemini-3.5-transcribe-live",
+  geminiModel: "gemini-3.5-transcribe",
 
-  // 2. Paramètres OpenAI / Tiers Cloud (Mistral, Groq, OpenAI)
-  openaiPreset: "openai",
-  sttBaseUrl: "https://api.openai.com",
-  sttApiKey: "",
-  sttModel: "whisper-1",
-  llmBaseUrl: "https://api.openai.com",
-  llmApiKey: "",
-  llmModel: "gpt-4o-mini",
+  // 2. Paramètres Mistral AI (Haute fidélité)
+  mistralApiKey: "",
+  mistralModel: "voxtral-mini-latest",
 
-  // 3. Paramètres Modèle 100 % Local (Whisper local + Ollama / LM Studio)
+  // 3. Paramètres Modèle 100 % Local (Whisper local sur :8000)
   localSttUrl: "http://localhost:8000",
   localSttModel: "whisper-1",
+  localApiKey: "",
   localLlmPreset: "ollama",
   localLlmUrl: "http://localhost:11434",
   localLlmModel: "llama3.2",
-  localApiKey: "",
 
   // 4. Préférences du Sélecteur de Mode de Voix (pour OpenAI/Tiers et Local)
   voiceModePolicy: "remember", // "remember" | "default"
@@ -511,7 +506,10 @@ function libererSessionAudio() {
 }
 
 /**
- * Démarre une nouvelle session d'enregistrement microphone pour l'onglet web actif.
+ * Démarre ou valide une nouvelle session de dictée pour l'onglet web actif.
+ * Note : La capture physique du microphone et l'animation des ondes sont désormais gérées
+ * in-situ dans le content script (content-injected.js) pour garantir l'affichage de l'invite
+ * native de permission de Firefox et éliminer les erreurs NotAllowedError (MIC_DENIED).
  * @param {number} tabId
  * @returns {Promise<Object>}
  */
@@ -529,119 +527,26 @@ async function demarrerSessionAudio(tabId) {
       return {
         success: false,
         error: "NOT_CONFIGURED",
-        activeVoiceMode: determinerModeVoixActif(config),
         provider: config.provider
       };
     }
 
-    // Capture microphone native Firefox (Gecko audio-capture)
-    let flux;
-    try {
-      flux = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true
-        }
-      });
-    } catch (err) {
-      if (DEBUG) console.error("[MagicVoiceScriber] Erreur getUserMedia Firefox :", err);
-      return {
-        success: false,
-        error: "MIC_DENIED",
-        provider: config.provider
-      };
-    }
-
-    sessionAudio.fluxMedia = flux;
     sessionAudio.tabId = tabId;
-    sessionAudio.tranchesAudio = [];
-    sessionAudio.texteValideLive = "";
-    sessionAudio.texteInterimLive = "";
-    sessionAudio.dernierTexteInterimValide = "";
-    sessionAudio.resolveurFinLive = null;
-    sessionAudio.wsPret = false;
-    sessionAudio.activiteDemarree = false;
-    sessionAudio.tamponPcmAvantPret = [];
-
-    // Initialisation et réveil explicite de l'AudioContext pour les 5 barres d'ondes blanches
-    try {
-      const AudioCtx = globalThis.AudioContext || globalThis.webkitAudioContext;
-      if (AudioCtx) {
-        sessionAudio.contexteAudio = new AudioCtx();
-        if (sessionAudio.contexteAudio.state === "suspended") {
-          await sessionAudio.contexteAudio.resume();
-        }
-
-        const source = sessionAudio.contexteAudio.createMediaStreamSource(flux);
-        sessionAudio.noeudSource = source;
-        sessionAudio.analyseur = sessionAudio.contexteAudio.createAnalyser();
-        sessionAudio.analyseur.fftSize = 128;
-        sessionAudio.analyseur.smoothingTimeConstant = 0.65;
-        source.connect(sessionAudio.analyseur);
-        sessionAudio.donneesFreq = new Uint8Array(sessionAudio.analyseur.frequencyBinCount);
-        sessionAudio.donneesTemps = new Uint8Array(sessionAudio.analyseur.fftSize);
-
-        // Si le moteur est Gemini avec gemini-3.5-transcribe-live, ouvrir le flux WebSocket v1beta
-        const estGeminiLive =
-          config.provider === "gemini" &&
-          config.geminiModel === "gemini-3.5-transcribe-live" &&
-          Boolean(config.geminiApiKey && config.geminiApiKey.trim());
-
-        if (estGeminiLive) {
-          initialiserWebSocketLive(config, source);
-        }
-      }
-    } catch (err) {
-      if (DEBUG) console.warn("[MagicVoiceScriber] Analyseur audio non disponible :", err);
-    }
-
-    // Démarrage du MediaRecorder (utilisé pour les modes batch et comme filet de sécurité)
-    const mime = choisirMimeTypeSupporte();
-    sessionAudio.mimeType = mime || "audio/webm";
-    try {
-      sessionAudio.mediaRecorder = mime
-        ? new MediaRecorder(flux, { mimeType: mime })
-        : new MediaRecorder(flux);
-    } catch {
-      sessionAudio.mediaRecorder = new MediaRecorder(flux);
-    }
-
-    sessionAudio.mediaRecorder.addEventListener("dataavailable", (e) => {
-      if (e.data && e.data.size > 0) {
-        sessionAudio.tranchesAudio.push(e.data);
-      }
-    });
-
-    sessionAudio.mediaRecorder.start(200);
     sessionAudio.active = true;
     sessionAudio.etat = "RECORDING";
-
-    // Envoi périodique (50 ms = 20 FPS) des 5 hauteurs de barres au widget web actif
-    if (tabId) {
-      sessionAudio.intervalleOndes = setInterval(() => {
-        if (!sessionAudio.active || sessionAudio.etat !== "RECORDING") return;
-        const bars = calculerCinqBarresVocales();
-        api.tabs
-          .sendMessage(tabId, {
-            action: "updateVoiceBars",
-            bars
-          })
-          .catch(() => {});
-      }, 50);
-    }
 
     return {
       success: true,
       state: "RECORDING",
-      activeVoiceMode: determinerModeVoixActif(config),
       provider: config.provider,
-      geminiModel: config.geminiModel
+      geminiModel: config.geminiModel,
+      mistralMode: config.mistralMode || "realtime"
     };
   } finally {
     demarrageSessionEnCours = false;
   }
 }
+
 
 /**
  * Initialise la session WebSocket temps réel Gemini 3.5 Transcribe Live (v1beta).
@@ -1108,6 +1013,29 @@ async function traiterMessage(message, expediteur) {
       } catch {}
     }
     return await demarrerSessionAudio(idCible);
+  }
+
+  // ── Action 3ter : Obtenir une session éphémère Mistral Voxtral Realtime (rt_*) ──
+  if (message.action === "getMistralRealtimeSession") {
+    const config = await chargerConfiguration();
+    const cle = (config.mistralApiKey || config.apiKey || config.sttApiKey || config.llmApiKey || "").trim();
+    if (!cle) {
+      return { success: false, error: "UNAUTHORIZED" };
+    }
+    try {
+      const token = await globalThis.MVSProviders.FOURNISSEURS.mistral.obtenirSessionRealtime(cle);
+      return {
+        success: true,
+        token,
+        wsUrl: globalThis.MVSProviders.FOURNISSEURS.mistral.obtenirUrlWebSocketRealtime()
+      };
+    } catch (err) {
+      const code = err && err.message ? err.message : "SERVICE_UNAVAILABLE";
+      return {
+        success: false,
+        error: CODES_ERREURS_CONNUS.has(code) ? code : "SERVICE_UNAVAILABLE"
+      };
+    }
   }
 
   // ── Action 3bis : Maintien de l'Event Page MV3 en vie pendant la dictée ─────

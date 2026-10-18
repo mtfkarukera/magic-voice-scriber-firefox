@@ -204,7 +204,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (osIcon) osIcon.textContent = "🍏";
     if (osNameLabel) osNameLabel.textContent = "Système macOS détecté";
     if (osDetailText) osDetailText.textContent = "Apple Silicon ou Intel";
-    if (setupShortcutBadge) setupShortcutBadge.textContent = "⌥ + Shift + S";
+    if (setupShortcutBadge) setupShortcutBadge.textContent = "⌃ + Shift + S";
   } else if (platformOS === "win") {
     if (osIcon) osIcon.textContent = "🪟";
     if (osNameLabel) osNameLabel.textContent = "Système Windows détecté";
@@ -367,102 +367,51 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // ═════════════════════════════════════════════════════════════════════════
+  // ═════════════════════════════════════════════════════════════════════════
   // 3. ÉTAPE 2 : CONFIGURATION DU FOURNISSEUR & TEST DE CONNEXION API
   // ═════════════════════════════════════════════════════════════════════════
 
   const selectProvider = document.getElementById("setup-select-provider");
+  const panelMistral = document.getElementById("setup-panel-mistral");
   const panelGemini = document.getElementById("setup-panel-gemini");
-  const panelOpenai = document.getElementById("setup-panel-openai");
   const panelLocal = document.getElementById("setup-panel-local");
 
+  const inputMistralKey = document.getElementById("setup-mistral-key");
+  const btnToggleMistralKey = document.getElementById("btn-toggle-setup-mistral-key");
   const inputGeminiKey = document.getElementById("setup-gemini-key");
   const btnToggleGeminiKey = document.getElementById("btn-toggle-setup-gemini-key");
-  const inputOpenaiKey = document.getElementById("setup-openai-key");
-  const btnToggleOpenaiKey = document.getElementById("btn-toggle-setup-openai-key");
-  const selectOpenaiPreset = document.getElementById("setup-openai-preset");
-  const selectLocalPreset = document.getElementById("setup-local-preset");
+  const inputLocalUrl = document.getElementById("setup-local-url");
 
+  const switchCaretGem = document.getElementById("setup-caret-gem-enabled");
   const btnTestApi = document.getElementById("btn-test-api");
   const apiTestStatus = document.getElementById("api-test-status");
 
-  const PRESETS_CLOUD = {
-    openai: {
-      sttUrl: "https://api.openai.com",
-      sttModel: "whisper-1",
-      llmUrl: "https://api.openai.com",
-      llmModel: "gpt-4o-mini"
-    },
-    groq: {
-      sttUrl: "https://api.groq.com/openai",
-      sttModel: "whisper-large-v3-turbo",
-      llmUrl: "https://api.groq.com/openai",
-      llmModel: "llama-3.3-70b-versatile"
-    },
-    mistral: {
-      sttUrl: "https://api.groq.com/openai",
-      sttModel: "whisper-large-v3-turbo",
-      llmUrl: "https://api.mistral.ai",
-      llmModel: "mistral-small-latest"
-    },
-    custom: {
-      sttUrl: "https://api.openai.com",
-      sttModel: "whisper-1",
-      llmUrl: "https://api.openai.com",
-      llmModel: "gpt-4o-mini"
-    }
-  };
-
-  const PRESETS_LOCAL = {
-    ollama: {
-      sttUrl: "http://localhost:8000",
-      sttModel: "whisper-1",
-      llmUrl: "http://localhost:11434",
-      llmModel: "llama3.2"
-    },
-    lmstudio: {
-      sttUrl: "http://localhost:8000",
-      sttModel: "whisper-1",
-      llmUrl: "http://localhost:1234",
-      llmModel: "local-model"
-    },
-    custom: {
-      sttUrl: "http://localhost:8000",
-      sttModel: "whisper-1",
-      llmUrl: "http://localhost:11434",
-      llmModel: "llama3.2"
-    }
-  };
-
-  function construireConfigActive(modeleGemini = "gemini-3.5-transcribe-live") {
+  function construireConfigActive() {
     const provider = selectProvider ? selectProvider.value : "gemini";
     const config = {
-      provider,
-      geminiApiKey: inputGeminiKey ? inputGeminiKey.value.trim() : "",
-      geminiModel: modeleGemini
+      provider
     };
 
-    if (provider === "openai") {
-      const presetKey = selectOpenaiPreset ? selectOpenaiPreset.value : "openai";
-      const preset = PRESETS_CLOUD[presetKey] || PRESETS_CLOUD.openai;
-      config.openaiPreset = presetKey;
-      config.sttBaseUrl = preset.sttUrl;
-      config.sttModel = preset.sttModel;
-      config.llmBaseUrl = preset.llmUrl;
-      config.llmModel = preset.llmModel;
-      const key = inputOpenaiKey ? inputOpenaiKey.value.trim() : "";
-      config.sttApiKey = key;
-      config.llmApiKey = key;
+    if (provider === "gemini") {
+      config.geminiApiKey = inputGeminiKey ? inputGeminiKey.value.trim() : "";
+      config.geminiModel = "gemini-3.5-transcribe";
+    } else if (provider === "mistral") {
+      config.mistralApiKey = inputMistralKey ? inputMistralKey.value.trim() : "";
+      config.mistralModel = "voxtral-mini-latest";
     } else if (provider === "local") {
-      const presetKey = selectLocalPreset ? selectLocalPreset.value : "ollama";
-      const preset = PRESETS_LOCAL[presetKey] || PRESETS_LOCAL.ollama;
-      config.localLlmPreset = presetKey;
-      config.localSttUrl = preset.sttUrl;
-      config.localSttModel = preset.sttModel;
-      config.localLlmUrl = preset.llmUrl;
-      config.localLlmModel = preset.llmModel;
+      config.localSttUrl = inputLocalUrl ? inputLocalUrl.value.trim() : "http://localhost:8000";
+      config.localSttModel = "whisper-1";
       config.localApiKey = "";
     }
     return config;
+  }
+
+  if (btnToggleMistralKey && inputMistralKey) {
+    btnToggleMistralKey.addEventListener("click", () => {
+      const estMasque = inputMistralKey.type === "password";
+      inputMistralKey.type = estMasque ? "text" : "password";
+      btnToggleMistralKey.setAttribute("aria-pressed", estMasque ? "true" : "false");
+    });
   }
 
   if (btnToggleGeminiKey && inputGeminiKey) {
@@ -472,24 +421,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       btnToggleGeminiKey.setAttribute("aria-pressed", estMasque ? "true" : "false");
     });
   }
-  if (btnToggleOpenaiKey && inputOpenaiKey) {
-    btnToggleOpenaiKey.addEventListener("click", () => {
-      const estMasque = inputOpenaiKey.type === "password";
-      inputOpenaiKey.type = estMasque ? "text" : "password";
-      btnToggleOpenaiKey.setAttribute("aria-pressed", estMasque ? "true" : "false");
-    });
-  }
 
   function actualiserAffichageFournisseur() {
     const val = selectProvider ? selectProvider.value : "gemini";
     if (panelGemini) panelGemini.classList.toggle("mvs-hidden", val !== "gemini");
-    if (panelOpenai) panelOpenai.classList.toggle("mvs-hidden", val !== "openai");
+    if (panelMistral) panelMistral.classList.toggle("mvs-hidden", val !== "mistral");
     if (panelLocal) panelLocal.classList.toggle("mvs-hidden", val !== "local");
-
-    const panelGeminiSmart = document.getElementById("setup-gemini-smart-panel");
-    const panelLlmModes = document.getElementById("setup-llm-modes-panel");
-    if (panelGeminiSmart) panelGeminiSmart.classList.toggle("mvs-hidden", val !== "gemini");
-    if (panelLlmModes) panelLlmModes.classList.toggle("mvs-hidden", val === "gemini");
 
     if (apiTestStatus) {
       apiTestStatus.textContent = "";
@@ -504,40 +441,28 @@ document.addEventListener("DOMContentLoaded", async () => {
   try {
     const configExistante = await api.storage.local.get([
       "provider",
+      "mistralApiKey",
       "geminiApiKey",
-      "sttApiKey",
-      "llmApiKey",
-      "openaiPreset",
-      "localLlmPreset",
-      "defaultVoiceMode"
+      "localSttUrl",
+      "caretGemEnabled"
     ]);
 
     if (configExistante.provider && selectProvider) {
       selectProvider.value = configExistante.provider;
     }
+    if (configExistante.mistralApiKey && inputMistralKey) {
+      inputMistralKey.value = configExistante.mistralApiKey;
+    }
     if (configExistante.geminiApiKey && inputGeminiKey) {
       inputGeminiKey.value = configExistante.geminiApiKey;
     }
-    if (configExistante.sttApiKey && inputOpenaiKey) {
-      inputOpenaiKey.value = configExistante.sttApiKey;
+    if (configExistante.localSttUrl && inputLocalUrl) {
+      inputLocalUrl.value = configExistante.localSttUrl;
     }
-    if (configExistante.openaiPreset && selectOpenaiPreset) {
-      selectOpenaiPreset.value = configExistante.openaiPreset;
-    }
-    if (configExistante.localLlmPreset && selectLocalPreset) {
-      selectLocalPreset.value = configExistante.localLlmPreset;
+    if (typeof configExistante.caretGemEnabled === "boolean" && switchCaretGem) {
+      switchCaretGem.checked = configExistante.caretGemEnabled;
     }
     actualiserAffichageFournisseur();
-
-    if (configExistante.defaultVoiceMode) {
-      const radio = document.querySelector(`input[name="setup-voice-mode"][value="${configExistante.defaultVoiceMode}"]`);
-      if (radio) {
-        radio.checked = true;
-        document.querySelectorAll(".mvs-mode-option").forEach((opt) => {
-          opt.classList.toggle("selected", opt.contains(radio));
-        });
-      }
-    }
   } catch (errStockage) {
     if (DEBUG) console.warn("[Setup] Impossible de lire le storage :", errStockage);
   }
@@ -579,27 +504,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     });
   }
-
-  // ═════════════════════════════════════════════════════════════════════════
-  // 4. ÉTAPE 3 : STYLES DE DICTÉE (CARDS RADIO)
-  // ═════════════════════════════════════════════════════════════════════════
-
-  document.querySelectorAll(".mvs-mode-option").forEach((opt) => {
-    opt.addEventListener("click", () => {
-      document.querySelectorAll(".mvs-mode-option").forEach((o) => o.classList.remove("selected"));
-      opt.classList.add("selected");
-      const input = opt.querySelector("input");
-      if (input) input.checked = true;
-    });
-  });
-
-  document.querySelectorAll('input[name="setup-voice-mode"]').forEach((input) => {
-    input.addEventListener("change", () => {
-      document.querySelectorAll(".mvs-mode-option").forEach((opt) => {
-        opt.classList.toggle("selected", opt.contains(input));
-      });
-    });
-  });
 
   // ═════════════════════════════════════════════════════════════════════════
   // 5. ÉTAPE 4 : BAC À SABLE INTERACTIF (ESSAYEZ LA MAGIE EN DIRECT !)
@@ -795,9 +699,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     try {
       const base64Audio = await blobVersBase64(blobFinal);
-      const modeRadio = document.querySelector('input[name="setup-voice-mode"]:checked');
-      const voiceMode = modeRadio ? modeRadio.value : "natural";
-      const configDemo = construireConfigActive("gemini-3.5-transcribe");
+      const configDemo = construireConfigActive();
 
       let resultat;
       if (globalThis.MVSProviders) {
@@ -805,7 +707,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           configDemo,
           base64Audio,
           blobFinal.type || "audio/webm",
-          voiceMode
+          "natural"
         );
       }
 
@@ -857,14 +759,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       btnFinish.disabled = true;
       btnFinish.textContent = "Enregistrement en cours…";
 
-      const modeRadio = document.querySelector('input[name="setup-voice-mode"]:checked');
-      const voiceMode = modeRadio ? modeRadio.value : "natural";
-
       const configSauvegarde = {
-        ...construireConfigActive("gemini-3.5-transcribe-live"),
-        defaultVoiceMode: voiceMode,
-        lastVoiceMode: voiceMode,
-        voiceModePolicy: "default"
+        ...construireConfigActive(),
+        caretGemEnabled: switchCaretGem ? switchCaretGem.checked : false
       };
 
       try {

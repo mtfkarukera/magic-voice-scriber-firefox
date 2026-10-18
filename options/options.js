@@ -5,7 +5,7 @@
  * Responsabilités :
  *   1. Appliquer l'internationalisation native sur tous les nœuds déclaratifs (6 langues)
  *   2. Charger et sauvegarder les préférences dans browser.storage.local
- *   3. Gérer les préréglages Cloud (OpenAI, Groq, Mistral, Custom) et Locaux (Ollama, LM Studio)
+ *   3. Gérer le Trio de Moteurs (Mistral AI par défaut, Google Gemini, Localhost)
  *   4. Gérer l'ergonomie web (Goutte vocale au repos, liste noire de domaines)
  *   5. Vérifier et demander en 1 clic les permissions d'hôtes WebExtension
  *   6. Tester en direct la connexion au moteur sélectionné et relancer le wizard
@@ -74,40 +74,22 @@ document.addEventListener("DOMContentLoaded", async () => {
   const providerBadge = document.getElementById("provider-badge");
   const helpProvider = document.getElementById("help-provider");
 
-  // Section 1A : Gemini
+  // Section 1A : Google Gemini (Par défaut)
   const sectionGemini = document.getElementById("section-gemini");
   const inputGeminiKey = document.getElementById("gemini-api-key");
   const btnToggleGeminiKey = document.getElementById("btn-toggle-gemini-key");
-  const selectGeminiModel = document.getElementById("gemini-model");
 
-  // Section 1B : OpenAI / Tiers Cloud
-  const sectionOpenai = document.getElementById("section-openai");
-  const selectOpenaiPreset = document.getElementById("openai-preset");
-  const inputSttUrl = document.getElementById("stt-base-url");
-  const inputSttModel = document.getElementById("stt-model");
-  const inputSttKey = document.getElementById("stt-api-key");
-  const btnToggleSttKey = document.getElementById("btn-toggle-stt-key");
-  const inputLlmUrl = document.getElementById("llm-base-url");
-  const inputLlmModel = document.getElementById("llm-model");
-  const inputLlmKey = document.getElementById("llm-api-key");
-  const btnToggleLlmKey = document.getElementById("btn-toggle-llm-key");
+  // Section 1B : Mistral AI
+  const sectionMistral = document.getElementById("section-mistral");
+  const inputMistralKey = document.getElementById("mistral-api-key");
+  const btnToggleMistralKey = document.getElementById("btn-toggle-mistral-key");
 
-  // Section 1C : Modèle Local
+  // Section 1C : Modèle 100 % Local
   const sectionLocal = document.getElementById("section-local");
   const inputLocalSttUrl = document.getElementById("local-stt-url");
   const inputLocalSttModel = document.getElementById("local-stt-model");
-  const selectLocalLlmPreset = document.getElementById("local-llm-preset");
-  const inputLocalLlmUrl = document.getElementById("local-llm-url");
-  const inputLocalLlmModel = document.getElementById("local-llm-model");
-  const inputLocalKey = document.getElementById("local-api-key");
-  const btnToggleLocalKey = document.getElementById("btn-toggle-local-key");
 
-  // Section 2 : Mode de Voix (réservée aux moteurs OpenAI/Tiers et Local)
-  const sectionVoiceMode = document.getElementById("section-voice-mode");
-  const selectVoiceModePolicy = document.getElementById("voice-mode-policy");
-  const selectDefaultVoiceMode = document.getElementById("default-voice-mode");
-
-  // Section 3 : Ergonomie Web & Exclusions
+  // Section 2 : Ergonomie Web & Exclusions
   const switchCaretGem = document.getElementById("caret-gem-enabled");
   const inputNewDomain = document.getElementById("input-new-domain");
   const btnAddDomain = document.getElementById("btn-add-domain");
@@ -123,61 +105,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   const statusText = document.getElementById("status-text");
   const btnTest = document.getElementById("btn-test");
 
-  // ── Valeurs par défaut & Préréglages ───────────────────────────────────────
+  // ── Valeurs par défaut ─────────────────────────────────────────────────────
   const DEFAUTS = {
     provider: "gemini",
     geminiApiKey: "",
-    geminiModel: "gemini-3.5-transcribe-live",
-    openaiPreset: "openai",
-    sttBaseUrl: "https://api.openai.com",
-    sttApiKey: "",
-    sttModel: "whisper-1",
-    llmBaseUrl: "https://api.openai.com",
-    llmApiKey: "",
-    llmModel: "gpt-4o-mini",
+    mistralApiKey: "",
     localSttUrl: "http://localhost:8000",
     localSttModel: "whisper-1",
-    localLlmPreset: "ollama",
-    localLlmUrl: "http://localhost:11434",
-    localLlmModel: "llama3.2",
-    localApiKey: "",
-    voiceModePolicy: "remember",
-    defaultVoiceMode: "natural",
-    lastVoiceMode: "natural",
     caretGemEnabled: false,
     sitesExclus: []
-  };
-
-  const PRESETS_CLOUD = {
-    openai: {
-      sttUrl: "https://api.openai.com",
-      sttModel: "whisper-1",
-      llmUrl: "https://api.openai.com",
-      llmModel: "gpt-4o-mini"
-    },
-    groq: {
-      sttUrl: "https://api.groq.com/openai",
-      sttModel: "whisper-large-v3-turbo",
-      llmUrl: "https://api.groq.com/openai",
-      llmModel: "llama-3.3-70b-versatile"
-    },
-    mistral: {
-      sttUrl: "https://api.groq.com/openai",
-      sttModel: "whisper-large-v3-turbo",
-      llmUrl: "https://api.mistral.ai",
-      llmModel: "mistral-small-latest"
-    }
-  };
-
-  const PRESETS_LOCAL = {
-    ollama: {
-      llmUrl: "http://localhost:11434",
-      llmModel: "llama3.2"
-    },
-    lmstudio: {
-      llmUrl: "http://localhost:1234",
-      llmModel: "local-model"
-    }
   };
 
   // Liste locale des domaines exclus
@@ -293,24 +229,11 @@ document.addEventListener("DOMContentLoaded", async () => {
    */
   function lireConfigFormulaire() {
     return {
-      provider: selectProvider.value,
-      geminiApiKey: inputGeminiKey.value.trim(),
-      geminiModel: selectGeminiModel.value,
-      openaiPreset: selectOpenaiPreset.value,
-      sttBaseUrl: inputSttUrl.value.trim() || "https://api.openai.com",
-      sttApiKey: inputSttKey.value.trim(),
-      sttModel: inputSttModel.value.trim() || "whisper-1",
-      llmBaseUrl: inputLlmUrl.value.trim() || "https://api.openai.com",
-      llmApiKey: inputLlmKey.value.trim(),
-      llmModel: inputLlmModel.value.trim() || "gpt-4o-mini",
-      localSttUrl: inputLocalSttUrl.value.trim() || "http://localhost:8000",
-      localSttModel: inputLocalSttModel.value.trim() || "whisper-1",
-      localLlmPreset: selectLocalLlmPreset.value,
-      localLlmUrl: inputLocalLlmUrl.value.trim() || "http://localhost:11434",
-      localLlmModel: inputLocalLlmModel.value.trim() || "llama3.2",
-      localApiKey: inputLocalKey.value.trim(),
-      voiceModePolicy: selectVoiceModePolicy.value,
-      defaultVoiceMode: selectDefaultVoiceMode.value,
+      provider: selectProvider ? selectProvider.value : "gemini",
+      geminiApiKey: inputGeminiKey ? inputGeminiKey.value.trim() : "",
+      mistralApiKey: inputMistralKey ? inputMistralKey.value.trim() : "",
+      localSttUrl: inputLocalSttUrl ? inputLocalSttUrl.value.trim() || "http://localhost:8000" : "http://localhost:8000",
+      localSttModel: inputLocalSttModel ? inputLocalSttModel.value.trim() || "whisper-1" : "whisper-1",
       caretGemEnabled: Boolean(switchCaretGem && switchCaretGem.checked),
       sitesExclus: [...listeSitesExclus]
     };
@@ -320,27 +243,25 @@ document.addEventListener("DOMContentLoaded", async () => {
    * Met à jour les panneaux visibles selon le fournisseur sélectionné.
    */
   function actualiserVisibiliteFournisseur() {
+    if (!selectProvider) return;
     const provider = selectProvider.value;
 
-    sectionGemini.classList.add("mvs-hidden");
-    sectionOpenai.classList.add("mvs-hidden");
-    sectionLocal.classList.add("mvs-hidden");
+    if (sectionGemini) sectionGemini.classList.add("mvs-hidden");
+    if (sectionMistral) sectionMistral.classList.add("mvs-hidden");
+    if (sectionLocal) sectionLocal.classList.add("mvs-hidden");
 
     if (provider === "gemini") {
-      sectionGemini.classList.remove("mvs-hidden");
-      if (sectionVoiceMode) sectionVoiceMode.classList.add("mvs-hidden");
-      providerBadge.textContent = t("badgeDefault");
-      helpProvider.textContent = t("helpProviderGemini");
-    } else if (provider === "openai") {
-      sectionOpenai.classList.remove("mvs-hidden");
-      if (sectionVoiceMode) sectionVoiceMode.classList.remove("mvs-hidden");
-      providerBadge.textContent = "OpenAI / Cloud";
-      helpProvider.textContent = t("helpProviderOpenai");
+      if (sectionGemini) sectionGemini.classList.remove("mvs-hidden");
+      if (providerBadge) providerBadge.textContent = t("badgeDefault") || "Google Gemini (Par défaut)";
+      if (helpProvider) helpProvider.textContent = t("helpProviderGemini") || "";
+    } else if (provider === "mistral") {
+      if (sectionMistral) sectionMistral.classList.remove("mvs-hidden");
+      if (providerBadge) providerBadge.textContent = "Mistral AI (Haute fidélité)";
+      if (helpProvider) helpProvider.textContent = t("helpProviderMistral") || "";
     } else if (provider === "local") {
-      sectionLocal.classList.remove("mvs-hidden");
-      if (sectionVoiceMode) sectionVoiceMode.classList.remove("mvs-hidden");
-      providerBadge.textContent = "Localhost";
-      helpProvider.textContent = t("helpProviderLocal");
+      if (sectionLocal) sectionLocal.classList.remove("mvs-hidden");
+      if (providerBadge) providerBadge.textContent = "Localhost (Whisper)";
+      if (helpProvider) helpProvider.textContent = t("helpProviderLocal") || "";
     }
 
     verifierPermissionOrigine();
@@ -358,15 +279,15 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (api && api.permissions && api.permissions.contains) {
         const accorde = await api.permissions.contains({ origins: [origine] });
         if (!accorde) {
-          permissionDomainCode.textContent = origine;
-          permissionBanner.classList.remove("mvs-hidden");
+          if (permissionDomainCode) permissionDomainCode.textContent = origine;
+          if (permissionBanner) permissionBanner.classList.remove("mvs-hidden");
           return;
         }
       }
     } catch {
       /* Ignorer */
     }
-    permissionBanner.classList.add("mvs-hidden");
+    if (permissionBanner) permissionBanner.classList.add("mvs-hidden");
   }
 
   /**
@@ -381,37 +302,20 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
+  lierBoutonVisibiliteCle(btnToggleMistralKey, inputMistralKey);
   lierBoutonVisibiliteCle(btnToggleGeminiKey, inputGeminiKey);
-  lierBoutonVisibiliteCle(btnToggleSttKey, inputSttKey);
-  lierBoutonVisibiliteCle(btnToggleLlmKey, inputLlmKey);
-  lierBoutonVisibiliteCle(btnToggleLocalKey, inputLocalKey);
 
   // ── Chargement initial depuis browser.storage.local ────────────────────────
   try {
     const stocke = await api.storage.local.get(Object.keys(DEFAUTS));
     const cfg = { ...DEFAUTS, ...stocke };
 
-    selectProvider.value = cfg.provider;
-    inputGeminiKey.value = cfg.geminiApiKey;
-    selectGeminiModel.value = cfg.geminiModel;
+    if (selectProvider) selectProvider.value = cfg.provider;
+    if (inputGeminiKey) inputGeminiKey.value = cfg.geminiApiKey || "";
+    if (inputMistralKey) inputMistralKey.value = cfg.mistralApiKey || "";
 
-    selectOpenaiPreset.value = cfg.openaiPreset;
-    inputSttUrl.value = cfg.sttBaseUrl;
-    inputSttKey.value = cfg.sttApiKey;
-    inputSttModel.value = cfg.sttModel;
-    inputLlmUrl.value = cfg.llmBaseUrl;
-    inputLlmKey.value = cfg.llmApiKey;
-    inputLlmModel.value = cfg.llmModel;
-
-    inputLocalSttUrl.value = cfg.localSttUrl;
-    inputLocalSttModel.value = cfg.localSttModel;
-    selectLocalLlmPreset.value = cfg.localLlmPreset;
-    inputLocalLlmUrl.value = cfg.localLlmUrl;
-    inputLocalLlmModel.value = cfg.localLlmModel;
-    inputLocalKey.value = cfg.localApiKey;
-
-    selectVoiceModePolicy.value = cfg.voiceModePolicy;
-    selectDefaultVoiceMode.value = cfg.defaultVoiceMode;
+    if (inputLocalSttUrl) inputLocalSttUrl.value = cfg.localSttUrl || "http://localhost:8000";
+    if (inputLocalSttModel) inputLocalSttModel.value = cfg.localSttModel || "whisper-1";
 
     if (switchCaretGem) {
       switchCaretGem.checked = Boolean(cfg.caretGemEnabled);
@@ -424,31 +328,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   actualiserVisibiliteFournisseur();
 
-  // ── Événements de Changement de Fournisseur & Presets ──────────────────────
-  selectProvider.addEventListener("change", actualiserVisibiliteFournisseur);
-
-  selectOpenaiPreset.addEventListener("change", () => {
-    const preset = PRESETS_CLOUD[selectOpenaiPreset.value];
-    if (preset) {
-      inputSttUrl.value = preset.sttUrl;
-      inputSttModel.value = preset.sttModel;
-      inputLlmUrl.value = preset.llmUrl;
-      inputLlmModel.value = preset.llmModel;
-    }
-    verifierPermissionOrigine();
-  });
-
-  selectLocalLlmPreset.addEventListener("change", () => {
-    const preset = PRESETS_LOCAL[selectLocalLlmPreset.value];
-    if (preset) {
-      inputLocalLlmUrl.value = preset.llmUrl;
-      inputLocalLlmModel.value = preset.llmModel;
-    }
-    verifierPermissionOrigine();
-  });
-
-  inputLlmUrl.addEventListener("input", verifierPermissionOrigine);
-  inputLocalLlmUrl.addEventListener("input", verifierPermissionOrigine);
+  // ── Événements de Changement de Fournisseur ─────────────────────────────────
+  if (selectProvider) {
+    selectProvider.addEventListener("change", actualiserVisibiliteFournisseur);
+  }
+  if (inputLocalSttUrl) {
+    inputLocalSttUrl.addEventListener("input", verifierPermissionOrigine);
+  }
 
   // ── Autorisation Réseau 1-Clic ─────────────────────────────────────────────
   if (btnGrantPermission) {
@@ -458,7 +344,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       try {
         if (api.permissions && api.permissions.request) {
           const accorde = await api.permissions.request({ origins: [origine] });
-          if (accorde) {
+          if (accorde && permissionBanner) {
             permissionBanner.classList.add("mvs-hidden");
           }
         }
@@ -483,7 +369,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         /* Ignorer */
       }
 
-      afficherStatut("loading", t("statusTesting"));
+      afficherStatut("loading", t("statusTesting") || "Test en cours...");
 
       try {
         const res = await api.runtime.sendMessage({
@@ -492,43 +378,40 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
 
         if (res && res.success) {
-          afficherStatut("success", t("statusTestSuccess"));
+          afficherStatut("success", t("statusTestSuccess") || "Connexion établie avec succès !");
         } else {
           const code = (res && res.message) || "SERVICE_UNAVAILABLE";
-          const detail = code === "UNAUTHORIZED" ? t("errorUnauthorized") : code;
-          afficherStatut("error", `${t("statusTestFailed")} ${detail}`);
+          const detail = code === "UNAUTHORIZED" ? (t("errorUnauthorized") || "Clé invalide") : code;
+          afficherStatut("error", `${t("statusTestFailed") || "Échec du test :"} ${detail}`);
         }
       } catch {
-        afficherStatut("error", `${t("statusTestFailed")} ${t("errorNetwork")}`);
+        afficherStatut("error", `${t("statusTestFailed") || "Échec du test :"} ${t("errorNetwork") || "Erreur réseau"}`);
       }
     });
   }
 
   // ── Sauvegarde des Paramètres ──────────────────────────────────────────────
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const config = lireConfigFormulaire();
-    const origine = globalThis.MVSProviders.obtenirPatternOrigine(config.provider, config);
+  if (form) {
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const config = lireConfigFormulaire();
+      const origine = globalThis.MVSProviders.obtenirPatternOrigine(config.provider, config);
 
-    try {
-      if (api.permissions && api.permissions.request) {
-        await api.permissions.request({ origins: [origine] });
-        await verifierPermissionOrigine();
-      }
-    } catch {
-      /* Ignorer */
-    }
-
-    try {
-      const donneesASauvegarder = { ...config };
-      if (config.voiceModePolicy === "default") {
-        donneesASauvegarder.lastVoiceMode = config.defaultVoiceMode;
+      try {
+        if (api.permissions && api.permissions.request) {
+          await api.permissions.request({ origins: [origine] });
+          await verifierPermissionOrigine();
+        }
+      } catch {
+        /* Ignorer */
       }
 
-      await api.storage.local.set(donneesASauvegarder);
-      afficherStatut("success", t("statusSaved"));
-    } catch {
-      afficherStatut("error", t("errorServiceUnavailable"));
-    }
-  });
+      try {
+        await api.storage.local.set(config);
+        afficherStatut("success", t("statusSaved") || "Paramètres enregistrés avec succès !");
+      } catch {
+        afficherStatut("error", t("errorServiceUnavailable") || "Erreur lors de la sauvegarde.");
+      }
+    });
+  }
 });
