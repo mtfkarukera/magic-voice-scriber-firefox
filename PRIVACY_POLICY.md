@@ -16,8 +16,8 @@ Lorsque vous déclenchez manuellement une dictée vocale (via le raccourci clavi
 - L'audio capturé par votre microphone dans l'onglet actif est conservé temporairement en mémoire vive (RAM) le temps de l'enregistrement, puis immédiatement purgé dès la transcription terminée ou annulée (`Échap`).
 - L'extension n'enregistre ni n'injecte jamais de texte dans les champs de mot de passe (`<input type="password">`).
 - Selon le fournisseur que vous avez explicitement choisi dans les paramètres :
-  1. **Mistral AI (Par défaut & Recommandé)** : Les tranches audio ou le fichier audio sont transmis directement aux serveurs officiels de Mistral AI (`api.mistral.ai`) via WebSocket bidi sécurisé par jeton de session éphémère (`rt_*`) ou requête REST unitaire chiffrée.
-  2. **Google Gemini API** : L'audio est envoyé directement à l'API officielle de Google (`generativelanguage.googleapis.com`) avec votre propre clé API via une connexion HTTPS / WSS chiffrée.
+  1. **Google Gemini API (Par défaut & Recommandé)** : L'audio est envoyé directement à l'API officielle de Google (`generativelanguage.googleapis.com`) avec votre propre clé API via une connexion HTTPS chiffrée.
+  2. **Mistral AI (Haute fidélité)** : Les tranches audio ou le fichier audio sont transmis directement aux serveurs officiels de Mistral AI (`api.mistral.ai`) via requête REST ou WebSocket chiffrée.
   3. **Modèle 100 % Local (Whisper local sur localhost:8000)** : L'intégralité du traitement vocal et textuel s'effectue à 100 % sur votre propre machine (`http://localhost` / `http://127.0.0.1`). Aucune donnée ne quitte votre ordinateur.
 
 ### 3. Stockage Local (`storage`)
@@ -44,9 +44,9 @@ When you manually trigger voice dictation (via the `Alt+Shift+S` / `Alt+Shift+D`
 - Microphone audio captured directly inside the active web tab is held only in volatile memory (RAM) during recording and is immediately discarded once transcription finishes or is canceled (`Escape`).
 - Password fields (`<input type="password">`) are strictly excluded from all voice capture and text injection.
 - Depending on the provider you explicitly configured in the settings:
-  1. **Mistral AI (Default & Recommended)**: Audio chunks or files are sent directly to Mistral AI's official endpoints (`api.mistral.ai`) via secure WebSocket bidi using an ephemeral session token (`rt_*`) or encrypted single-pass REST requests.
-  2. **Google Gemini API**: Audio is sent directly to Google's official API (`generativelanguage.googleapis.com`) using your own API key over encrypted HTTPS / WSS.
-  3. **Local Model (Local Whisper on localhost:8000)**: All speech-to-text processing happens 100% offline on your own computer (`http://localhost` / `http://127.0.0.1`). Zero data ever leaves your device.
+  1. **Google Gemini API (Default & Recommended)**: Audio is sent directly to Google's official API (`generativelanguage.googleapis.com`) using your own API key over encrypted HTTPS / WSS.
+  2. **Mistral AI (High fidelity)**: Audio chunks or files are sent directly to Mistral AI's official endpoints (`api.mistral.ai`) via secure WebSocket or encrypted single-pass REST requests.
+  3. **100% Local Model (Local Whisper on localhost:8000)**: All speech-to-text processing happens 100% offline on your own machine (`http://localhost` / `http://127.0.0.1`). Zero data ever leaves your device.
 
 ### 3. Local Storage (`storage`)
 Your preferences (active provider, voice mode preference, endpoints, API keys, excluded domains, and Caret Gem settings) are stored exclusively on your device within your Firefox profile using `browser.storage.local`.
