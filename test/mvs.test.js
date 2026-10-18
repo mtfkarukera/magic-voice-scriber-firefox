@@ -648,7 +648,7 @@ describe("4. Sécurité DOM, CSP & Garde-fou DEBUG (Règles 11, 12, 14)", () => 
     assert.equal(hosts.includes("https://generativelanguage.googleapis.com/*"), true, "Gemini doit figurer dans host_permissions");
     assert.equal(hosts.includes("https://api.mistral.ai/*"), true, "Mistral doit figurer dans host_permissions");
     assert.equal(allHosts.includes("http://localhost/*"), true, "Localhost doit figurer dans host_permissions ou optional_host_permissions");
-    assert.equal(manifest.version, "1.3.0", "La version du manifest doit être 1.3.0");
+    assert.equal(manifest.version, "1.3.1", "La version du manifest doit être 1.3.1");
   });
 });
 

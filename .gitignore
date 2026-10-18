@@ -27,3 +27,5 @@ submission_kit.md
 .env.*
 .web-ext-config.cjs
 .amo-upload-uuid
+previews/
+upload_previews.py

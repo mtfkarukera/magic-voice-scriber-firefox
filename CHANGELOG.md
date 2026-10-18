@@ -3,6 +3,12 @@
 Toutes les modifications notables de ce projet sont documentées dans ce fichier.
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
+## [1.3.1] - 2026-10-19
+
+### Distribution Signée Auto-Hébergée & Incrément SemVer
+- **Incrément de Version SemVer (`1.3.1`)** : Version dédiée à la distribution signée auto-hébergée (*unlisted* / auto-signature Mozilla) pour déploiement direct et permanent sur machines locales.
+- **Harmonisation des Métadonnées** : Alignement strict de `manifest.json`, `package.json` et de l'archive de distribution XPI.
+
 ---
 
 ## [1.3.0] - 2026-10-19
